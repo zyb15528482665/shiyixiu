@@ -327,12 +327,8 @@ async function doIt(){
   document.getElementById('loading').classList.add('show');
 
   try{
-    document.getElementById('loadingText').textContent='正在上传图片...';
-    const clothURL=await uploadImg(cloth);
-    if(!clothURL)throw new Error('图片上传失败，请检查网络');
-
     document.getElementById('loadingText').textContent='AI 正在生成试穿效果...';
-    const resultURL=await callVTON(clothURL);
+    const resultURL=await callVTON(cloth);
     if(!resultURL)throw new Error('生成失败');
 
     document.getElementById('ri').src=resultURL;
@@ -342,19 +338,11 @@ async function doIt(){
   document.getElementById('loading').classList.remove('show');
 }
 
-async function uploadImg(dataURL){
-  const blob=dataURLtoBlob(dataURL);
-  const form=new FormData();form.append('smfile',blob,'cloth.jpg');
-  try{const r=await fetch('https://sm.ms/api/v2/upload',{method:'POST',body:form});const d=await r.json();if(d.success&&d.data&&d.data.url)return d.data.url}catch(e){}
-  try{const f2=new FormData();f2.append('image',blob,'cloth.jpg');const r2=await fetch('https://api.imgbb.com/1/upload?key=7d93c8e3d6e2e4b5a1f0c9d8e7b6a5f4',{method:'POST',body:f2});const d2=await r2.json();if(d2.success&&d2.data&&d2.data.url)return d2.data.url}catch(e){}
-  return null;
-}
-
-async function callVTON(clothURL){
+async function callVTON(base64URL){
   const r=await fetch('https://dashscope.aliyuncs.com/api/v1/services/aigc/virtualmodel/generation/',{
     method:'POST',
     headers:{'Authorization':'Bearer '+ak,'Content-Type':'application/json','X-DashScope-Async':'enable'},
-    body:JSON.stringify({model:'wanx-virtualmodel',input:{base_image_url:clothURL,face_image_url:clothURL,prompt:'真实风格，高质量服装展示',face_prompt:'真实人脸，自然光线'},parameters:{short_side_size:'1024',n:1}})
+    body:JSON.stringify({model:'wanx-virtualmodel',input:{base_image_url:base64URL,face_image_url:base64URL,prompt:'真实风格，高质量服装展示',face_prompt:'真实人脸，自然光线'},parameters:{short_side_size:'1024',n:1}})
   });
   if(!r.ok){const e=await r.json();throw new Error(e.message||'API 调用失败，请检查 Key')}
   const t=await r.json();const tid=t.output.task_id;
