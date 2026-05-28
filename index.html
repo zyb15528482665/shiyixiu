@@ -327,8 +327,17 @@ async function doIt(){
   document.getElementById('loading').classList.add('show');
 
   try{
+    // 先上传图片到国内图床获取URL
+    document.getElementById('loadingText').textContent='正在上传图片...';
+    let clothURL=await uploadToCN(cloth);
+    if(!clothURL){
+      // 图床失败则尝试base64直传
+      document.getElementById('loadingText').textContent='直传模式...';
+      clothURL=cloth;
+    }
+
     document.getElementById('loadingText').textContent='AI 正在生成试穿效果...';
-    const resultURL=await callVTON(cloth);
+    const resultURL=await callVTON(clothURL);
     if(!resultURL)throw new Error('生成失败');
 
     document.getElementById('ri').src=resultURL;
@@ -338,7 +347,40 @@ async function doIt(){
   document.getElementById('loading').classList.remove('show');
 }
 
-async function callVTON(base64URL){
+async function uploadToCN(dataURL){
+  const blob=dataURLtoBlob(dataURL);
+
+  // 路过图床 imgse.com
+  try{
+    const f=new FormData();
+    f.append('file',blob,'cloth.jpg');
+    const r=await fetch('https://imgse.com/api/upload',{method:'POST',body:f});
+    const d=await r.json();
+    if(d.url)return d.url;
+  }catch(e){}
+
+  // 聚合图床 api.aa1.cn
+  try{
+    const f=new FormData();
+    f.append('file',blob,'cloth.jpg');
+    const r=await fetch('https://api.aa1.cn/api/tcapi/upload',{method:'POST',body:f});
+    const d=await r.json();
+    if(d.url)return d.url;
+  }catch(e){}
+
+  // 备用: SM.MS
+  try{
+    const f=new FormData();
+    f.append('smfile',blob,'cloth.jpg');
+    const r=await fetch('https://sm.ms/api/v2/upload',{method:'POST',body:f});
+    const d=await r.json();
+    if(d.success&&d.data&&d.data.url)return d.data.url;
+  }catch(e){}
+
+  return null;
+}
+
+async function callVTON(clothURL){
   const r=await fetch('https://dashscope.aliyuncs.com/api/v1/services/aigc/virtualmodel/generation/',{
     method:'POST',
     headers:{'Authorization':'Bearer '+ak,'Content-Type':'application/json','X-DashScope-Async':'enable'},
