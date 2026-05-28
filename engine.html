@@ -129,6 +129,12 @@ function updateBtn() {
 async function initDetector() {
   if (detector) return detector;
   document.getElementById('status').textContent = '正在加载AI姿态模型（首次约15秒）...';
+
+  // 关键修复: 限制WebGL纹理防止GPU超限（6144×6144 → 拆分小纹理）
+  if (tf.env().get('WEBGL_MAX_TEXTURE_SIZE') > 2048) {
+    tf.env().set('WEBGL_MAX_TEXTURE_SIZE', 2048);
+  }
+
   const model = poseDetection.SupportedModels.BlazePose;
   detector = await poseDetection.createDetector(model, {
     runtime: 'tfjs',
