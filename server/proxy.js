@@ -199,6 +199,39 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // GET / - 返回试衣秀页面
+  if ((url.pathname === '/' || url.pathname === '/index.html') && req.method === 'GET') {
+    try {
+      const htmlPath = path.join(__dirname, '..', 'index.html');
+      const html = fs.readFileSync(htmlPath, 'utf8');
+      res.writeHead(200, { ...CORS, 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(html);
+    } catch(e) {
+      jsonReply(res, { error: '无法加载页面' }, 500);
+    }
+    return;
+  }
+
+  // GET /manifest.json
+  if (url.pathname === '/manifest.json' && req.method === 'GET') {
+    try {
+      const mp = fs.readFileSync(path.join(__dirname, '..', 'manifest.json'), 'utf8');
+      res.writeHead(200, { ...CORS, 'Content-Type': 'application/json' });
+      res.end(mp);
+    } catch(e) { res.writeHead(404); res.end(); }
+    return;
+  }
+
+  // GET /sw.js
+  if (url.pathname === '/sw.js' && req.method === 'GET') {
+    try {
+      const sw = fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8');
+      res.writeHead(200, { ...CORS, 'Content-Type': 'application/javascript' });
+      res.end(sw);
+    } catch(e) { res.writeHead(404); res.end(); }
+    return;
+  }
+
   // 404
   jsonReply(res, { error: 'Not found' }, 404);
 });
