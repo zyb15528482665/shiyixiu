@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+<title>试衣秀 · 手动模式</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:"PingFang SC","Microsoft YaHei",sans-serif;background:#1a1a2e;color:#fff;min-height:100dvh;overflow-x:hidden}
+header{text-align:center;padding:16px;background:linear-gradient(135deg,#ec4899,#8b5cf6)}
+header h1{font-size:18px}header p{font-size:11px;opacity:.8;margin-top:2px}
+.container{max-width:500px;margin:0 auto;padding:12px}
+.card{background:#16213e;border-radius:14px;padding:14px;margin-bottom:10px}
+.card h3{font-size:13px;margin-bottom:8px}
+.row{display:flex;gap:8px}
+.col{flex:1}
+.upload{background:#0f0f23;border:2px dashed #2a2a4a;border-radius:10px;padding:14px;text-align:center;cursor:pointer}
+.upload img{max-width:100%;max-height:100px;border-radius:8px;display:none}
+.upload.has img{display:inline;margin-top:6px}
+.upload.has .placeholder{display:none}
+.upload .placeholder{font-size:12px;color:#888}
+
+.workspace{position:relative;background:#0f0f23;border-radius:14px;overflow:hidden;touch-action:none;margin:10px 0}
+.workspace canvas{display:block;width:100%}
+.toolbar{display:flex;gap:6px;padding:8px;justify-content:center;flex-wrap:wrap}
+.toolbar button{padding:8px 14px;border-radius:20px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.1);color:#fff;font-size:12px;cursor:pointer;font-family:inherit}
+.toolbar button.active{background:#ec4899;border-color:#ec4899}
+.slider-row{display:flex;align-items:center;gap:8px;padding:4px 8px;font-size:12px}
+.slider-row input{flex:1}
+
+.btn{display:block;width:100%;padding:12px;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;background:linear-gradient(135deg,#ec4899,#8b5cf6);color:#fff;margin:8px 0}
+.btn:active{transform:scale(.96)}
+.result-modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.9);z-index:100;display:none;align-items:center;justify-content:center;flex-direction:column;padding:20px}
+.result-modal.show{display:flex}
+.result-modal img{max-width:95%;max-height:70vh;border-radius:12px}
+.result-modal button{margin-top:16px;padding:12px 30px;border-radius:12px;border:none;background:#ec4899;color:#fff;font-size:15px;font-weight:700;cursor:pointer}
+</style>
+</head>
+<body>
+<header><h1>👗 试衣秀 · 手动模式</h1><p>拖动衣服对齐身体 · 智能融合 · 不耗GPU</p></header>
+<div class="container">
+
+  <div class="row">
+    <div class="col">
+      <div class="card"><h3>📷 人物照</h3>
+        <div class="upload" id="personUp" onclick="document.getElementById('pf').click()">
+          <div class="placeholder">点击上传</div><img id="pp">
+        </div>
+        <input type="file" id="pf" accept="image/*" style="display:none" onchange="loadImg(this,'p')">
+      </div>
+    </div>
+    <div class="col">
+      <div class="card"><h3>👔 衣服图</h3>
+        <div class="upload" id="clothUp" onclick="document.getElementById('cf').click()">
+          <div class="placeholder">点击上传</div><img id="cp">
+        </div>
+        <input type="file" id="cf" accept="image/*" style="display:none" onchange="loadImg(this,'c')">
+      </div>
+    </div>
+  </div>
+
+  <div class="workspace" id="workspace">
+    <canvas id="wc"></canvas>
+  </div>
+
+  <div class="toolbar">
+    <button id="btnMove" class="active" onclick="setMode('move')">✋ 移动</button>
+    <button id="btnScale" onclick="setMode('scale')">📐 缩放</button>
+    <button id="btnRotate" onclick="setMode('rotate')">🔄 旋转</button>
+    <button id="btnBlend" onclick="setMode('blend')">🎭 融合</button>
+  </div>
+
+  <div class="slider-row" id="sliderRow" style="display:none">
+    <span id="sliderLabel">融合度</span>
+    <input type="range" id="blendSlider" min="0" max="100" value="30" oninput="updateBlend()">
+    <span id="sliderVal">30%</span>
+  </div>
+
+  <button class="btn" onclick="saveResult()">💾 保存结果</button>
+</div>
+
+<div class="result-modal" id="resultModal">
+  <img id="resultImg">
+  <button onclick="downloadFinal()">💾 下载到相册</button>
+  <button onclick="document.getElementById('resultModal').classList.remove('show')" style="background:rgba(255,255,255,.2);margin-top:8px">关闭</button>
+</div>
+
+<script>
+let personImg, clothImg;
+let clothX=0, clothY=0, clothW=200, clothH=200, clothAngle=0;
+let mode='move';
+let blendAmount=0.3;
+let dragStart=null, dragVal=null;
+let snapshot=null; // 底图快照用于融合
+
+const wc=document.getElementById('wc'), ctx=wc.getContext('2d');
+
+function loadImg(input, type){
+  const f=input.files[0]; if(!f)return;
+  const r=new FileReader();
+  r.onload=e=>{
+    const img=new Image();
+    img.onload=()=>{
+      if(type==='p'){
+        personImg=img;
+        document.getElementById('pp').src=e.target.result;
+        document.getElementById('personUp').classList.add('has');
+        initWorkspace();
+      }else{
+        clothImg=img;
+        document.getElementById('cp').src=e.target.result;
+        document.getElementById('clothUp').classList.add('has');
+        initWorkspace();
+      }
+    };
+    img.src=e.target.result;
+  };
+  r.readAsDataURL(f);
+}
+
+function initWorkspace(){
+  if(!personImg)return;
+  const ws=document.getElementById('workspace');
+  const maxW=ws.clientWidth-2;
+  const scale=maxW/personImg.width;
+  wc.width=maxW;
+  wc.height=Math.round(personImg.height*scale);
+  ctx.drawImage(personImg,0,0,wc.width,wc.height);
+  snapshot=ctx.getImageData(0,0,wc.width,wc.height);
+  if(clothImg){
+    clothW=wc.width*0.45;
+    clothH=clothW*(clothImg.height/clothImg.width);
+    clothX=wc.width*0.27;
+    clothY=wc.height*0.25;
+  }
+  render();
+}
+
+function render(){
+  if(!snapshot)return;
+  // 恢复底图
+  ctx.putImageData(snapshot,0,0);
+  if(!clothImg)return;
+
+  ctx.save();
+  // 移到衣服中心
+  const cx=clothX+clothW/2, cy=clothY+clothH/2;
+  ctx.translate(cx,cy);
+  ctx.rotate(clothAngle);
+  // 画衣服
+  ctx.globalAlpha=1-blendAmount*0.6;
+  ctx.drawImage(clothImg,-clothW/2,-clothH/2,clothW,clothH);
+  // 边缘羽化
+  if(blendAmount>0){
+    ctx.globalCompositeOperation='destination-over';
+    ctx.globalAlpha=blendAmount*0.3;
+    ctx.drawImage(clothImg,-clothW/2-3,-clothH/2-3,clothW+6,clothH+6);
+  }
+  ctx.restore();
+
+  ctx.globalAlpha=1;
+  ctx.globalCompositeOperation='source-over';
+  // 控制框
+  ctx.strokeStyle='rgba(236,72,153,.8)';
+  ctx.lineWidth=2;
+  ctx.setLineDash([6,3]);
+  ctx.save();
+  ctx.translate(cx,cy);
+  ctx.rotate(clothAngle);
+  ctx.strokeRect(-clothW/2,-clothH/2,clothW,clothH);
+  // 四角手柄
+  [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([sx,sy])=>{
+    ctx.fillStyle='#ec4899';
+    ctx.fillRect(sx*clothW/2-6,sy*clothH/2-6,12,12);
+  });
+  ctx.restore();
+}
+
+// ========== 交互 ==========
+function setMode(m){
+  mode=m;
+  document.querySelectorAll('.toolbar button').forEach(b=>b.classList.remove('active'));
+  document.getElementById('btn'+{move:'Move',scale:'Scale',rotate:'Rotate',blend:'Blend'}[m]).classList.add('active');
+  document.getElementById('sliderRow').style.display=m==='blend'?'flex':'none';
+}
+
+function getPos(e){
+  const rect=wc.getBoundingClientRect();
+  const x=(e.touches?e.touches[0].clientX:e.clientX)-rect.left;
+  const y=(e.touches?e.touches[0].clientY:e.clientY)-rect.top;
+  return{x:x*(wc.width/rect.width),y:y*(wc.height/rect.height)};
+}
+
+wc.addEventListener('pointerdown',e=>{
+  if(!clothImg)return;
+  const p=getPos(e);
+  dragStart=p;
+  dragVal={x:clothX,y:clothY,w:clothW,h:clothH,a:clothAngle};
+});
+
+wc.addEventListener('pointermove',e=>{
+  if(!dragStart||!clothImg)return;
+  e.preventDefault();
+  const p=getPos(e);
+  const dx=p.x-dragStart.x, dy=p.y-dragStart.y;
+
+  if(mode==='move'){
+    clothX=dragVal.x+dx;
+    clothY=dragVal.y+dy;
+  }else if(mode==='scale'){
+    const s=1+dx/wc.width*2;
+    clothW=Math.max(30,Math.min(wc.width*1.5,dragVal.w*s));
+    clothH=clothW*(clothImg.height/clothImg.width);
+  }else if(mode==='rotate'){
+    const cx=dragVal.x+dragVal.w/2, cy=dragVal.y+dragVal.h/2;
+    const a1=Math.atan2(dragStart.y-cy,dragStart.x-cx);
+    const a2=Math.atan2(p.y-cy,p.x-cx);
+    clothAngle=dragVal.a+(a2-a1);
+  }else if(mode==='blend'){
+    blendAmount=Math.max(0,Math.min(1,blendAmount+dy/200));
+    document.getElementById('blendSlider').value=Math.round(blendAmount*100);
+    document.getElementById('sliderVal').textContent=Math.round(blendAmount*100)+'%';
+  }
+  render();
+});
+
+wc.addEventListener('pointerup',()=>{dragStart=null;});
+wc.addEventListener('pointerleave',()=>{dragStart=null;});
+
+function updateBlend(){
+  blendAmount=parseInt(document.getElementById('blendSlider').value)/100;
+  document.getElementById('sliderVal').textContent=Math.round(blendAmount*100)+'%';
+  render();
+}
+
+function saveResult(){
+  snapshot=ctx.getImageData(0,0,wc.width,wc.height);
+  const result=document.getElementById('resultImg');
+  result.src=wc.toDataURL('image/jpeg',0.92);
+  document.getElementById('resultModal').classList.add('show');
+}
+
+function downloadFinal(){
+  const a=document.createElement('a');
+  a.href=document.getElementById('resultImg').src;
+  a.download='试衣秀_'+new Date().toISOString().slice(0,10)+'.jpg';
+  a.click();
+}
+</script>
+</body>
+</html>

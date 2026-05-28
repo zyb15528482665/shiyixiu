@@ -71,11 +71,9 @@ canvas#debug{display:none}
 
 <canvas id="debug"></canvas>
 
-<!-- 只加载CPU版TF.js，WebGL根本不引入 -->
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core@4.17.0/dist/tf-core.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter@4.17.0/dist/tf-converter.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-cpu@4.17.0/dist/tf-backend-cpu.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@2.1.3/dist/pose-detection.min.js"></script>
+<!-- 阿里npmmirror国内CDN -->
+<script src="https://registry.npmmirror.com/@tensorflow/tfjs/4.17.0/files/dist/tf.min.js"></script>
+<script src="https://registry.npmmirror.com/@tensorflow-models/pose-detection/2.1.3/files/dist/pose-detection.min.js"></script>
 
 <script>
 // ============ 全局变量 ============
@@ -126,18 +124,16 @@ function updateBtn() {
 // ============ MoveNet初始化（CPU）============
 async function initDetector() {
   if (detector) return detector;
-  statusEl.textContent = '正在加载MoveNet模型（首次约5秒）...';
+  statusEl.textContent = '正在加载BlazePose模型（首次约10秒）...';
 
-  // 注册CPU后端（只有CPU，没有WebGL可选）
-  await tf.setBackend('cpu');
   await tf.ready();
 
-  const model = poseDetection.SupportedModels.MoveNet;
+  const model = poseDetection.SupportedModels.BlazePose;
   detector = await poseDetection.createDetector(model, {
     runtime: 'tfjs',
-    modelType: 'SinglePose.Lightning'
+    modelType: 'lite'
   });
-  statusEl.textContent = '✅ MoveNet已就绪';
+  statusEl.textContent = '✅ BlazePose已就绪';
   return detector;
 }
 
