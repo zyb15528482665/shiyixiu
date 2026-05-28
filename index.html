@@ -323,81 +323,75 @@ function compressFromDataURL(d,cb){const img=new Image();img.onload=()=>{
 
 async function doIt(){
   if(!person||!cloth)return toast('请先上传照片和衣服');
-  if(!ak)return toast('请先设置 API Key（dashscope.aliyun.com 免费获取）');
   document.getElementById('loading').classList.add('show');
 
   try{
-    // 先上传图片到国内图床获取URL
-    document.getElementById('loadingText').textContent='正在上传图片...';
-    let clothURL=await uploadToCN(cloth);
-    if(!clothURL){
-      // 图床失败则尝试base64直传
-      document.getElementById('loadingText').textContent='直传模式...';
-      clothURL=cloth;
+    // 优先: 本地代理 → 阿里云API
+    const proxyURL = await callProxy(cloth);
+    if (proxyURL) {
+      document.getElementById('ri').src = proxyURL;
+      document.getElementById('result').classList.add('show');
+      toast('试穿完成 ✨');
+      document.getElementById('loading').classList.remove('show');
+      return;
     }
-
-    document.getElementById('loadingText').textContent='AI 正在生成试穿效果...';
-    const resultURL=await callVTON(clothURL);
-    if(!resultURL)throw new Error('生成失败');
-
-    document.getElementById('ri').src=resultURL;
-    document.getElementById('result').classList.add('show');
-    toast('试穿完成 ✨');
-  }catch(e){toast('❌ '+e.message)}
+    throw new Error('请先启动本地代理: node server/proxy.js');
+  } catch(e) {
+    toast('❌ '+e.message);
+    showProxyHelp();
+  }
   document.getElementById('loading').classList.remove('show');
 }
 
-async function uploadToCN(dataURL){
-  const blob=dataURLtoBlob(dataURL);
+async function callProxy(clothDataURL) {
+  document.getElementById('loadingText').textContent = '正在连接本地代理...';
 
-  // 路过图床 imgse.com
-  try{
-    const f=new FormData();
-    f.append('file',blob,'cloth.jpg');
-    const r=await fetch('https://imgse.com/api/upload',{method:'POST',body:f});
-    const d=await r.json();
-    if(d.url)return d.url;
-  }catch(e){}
+  // 先发API Key
+  if (ak) {
+    try {
+      await fetch('http://127.0.0.1:3456/key', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: ak })
+      });
+    } catch(e) {}
+  }
 
-  // 聚合图床 api.aa1.cn
-  try{
-    const f=new FormData();
-    f.append('file',blob,'cloth.jpg');
-    const r=await fetch('https://api.aa1.cn/api/tcapi/upload',{method:'POST',body:f});
-    const d=await r.json();
-    if(d.url)return d.url;
-  }catch(e){}
+  document.getElementById('loadingText').textContent = 'AI 正在生成试穿效果...';
+  const res = await fetch('http://127.0.0.1:3456/tryon', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cloth: clothDataURL })
+  });
 
-  // 备用: SM.MS
-  try{
-    const f=new FormData();
-    f.append('smfile',blob,'cloth.jpg');
-    const r=await fetch('https://sm.ms/api/v2/upload',{method:'POST',body:f});
-    const d=await r.json();
-    if(d.success&&d.data&&d.data.url)return d.data.url;
-  }catch(e){}
-
+  const data = await res.json();
+  if (data.success) return data.image_url;
+  if (data.error) throw new Error(data.error);
   return null;
 }
 
-async function callVTON(clothURL){
-  const r=await fetch('https://dashscope.aliyuncs.com/api/v1/services/aigc/virtualmodel/generation/',{
-    method:'POST',
-    headers:{'Authorization':'Bearer '+ak,'Content-Type':'application/json','X-DashScope-Async':'enable'},
-    body:JSON.stringify({model:'wanx-virtualmodel',input:{base_image_url:base64URL,face_image_url:base64URL,prompt:'真实风格，高质量服装展示',face_prompt:'真实人脸，自然光线'},parameters:{short_side_size:'1024',n:1}})
-  });
-  if(!r.ok){const e=await r.json();throw new Error(e.message||'API 调用失败，请检查 Key')}
-  const t=await r.json();const tid=t.output.task_id;
-
-  for(let i=0;i<30;i++){
-    await new Promise(r=>setTimeout(r,2000));
-    const cr=await fetch('https://dashscope.aliyuncs.com/api/v1/tasks/'+tid,{headers:{'Authorization':'Bearer '+ak}});
-    const cd=await cr.json();
-    if(cd.output.task_status==='SUCCEEDED')return cd.output.results[0].url;
-    if(cd.output.task_status==='FAILED')throw new Error(cd.output.message||'生成失败');
-    document.getElementById('loadingText').textContent='生成中...('+Math.round((i+1)*2)+'s)';
+function showProxyHelp() {
+  document.getElementById('result').classList.add('show');
+  document.getElementById('ri').style.display = 'none';
+  let guide = document.getElementById('proxyHelp');
+  if (!guide) {
+    guide = document.createElement('div');
+    guide.id = 'proxyHelp';
+    guide.style.cssText = 'color:#fff;text-align:center;padding:20px;max-width:320px;';
+    document.getElementById('result').appendChild(guide);
   }
-  throw new Error('生成超时，请重试');
+  guide.innerHTML = `
+    <div style="font-size:40px;margin-bottom:12px;">🖥️</div>
+    <div style="font-size:15px;font-weight:700;margin-bottom:8px;">需要在电脑上启动代理服务</div>
+    <div style="font-size:11px;color:#a0a0c0;line-height:1.8;text-align:left;">
+      1. 打开终端(cmd)，进入项目目录<br>
+      &nbsp;&nbsp;&nbsp;<code>cd D:\\Claude项目列表\\AI试穿\\server</code><br>
+      2. 启动代理（无需安装依赖）<br>
+      &nbsp;&nbsp;&nbsp;<code>node proxy.js</code><br>
+      3. 看到"等待请求"后，回App重试
+    </div>
+    <button onclick="document.getElementById('result').classList.remove('show');document.getElementById('ri').style.display='block';" style="margin-top:12px;padding:10px 24px;border-radius:10px;border:none;background:#c8a87c;color:#0a0a0f;font-weight:700;cursor:pointer;">关闭</button>
+  `;
 }
 
 function dataURLtoBlob(d){const p=d.split(','),m=p[0].match(/:(.*?);/)[1],b=atob(p[1]),a=new Uint8Array(b.length);for(let i=0;i<b.length;i++)a[i]=b.charCodeAt(i);return new Blob([a],{type:m})}
