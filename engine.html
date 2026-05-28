@@ -23,17 +23,17 @@ header h1{font-size:20px}header p{font-size:12px;opacity:.8;margin-top:4px}
 .result-box{text-align:center}
 .result-box img{max-width:100%;max-height:50vh;border-radius:12px;margin-top:12px}
 .status{font-size:13px;color:#a0a0c0;text-align:center;margin:8px 0}
-canvas{display:none}
 .loader{display:none;text-align:center;padding:20px}
 .loader.show{display:block}
 .spinner{width:36px;height:36px;border:3px solid rgba(255,255,255,.2);border-top-color:#ec4899;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
 @keyframes spin{to{transform:rotate(360deg)}}
+canvas#debug{display:none}
 </style>
 </head>
 <body>
 <header>
   <h1>👗 试衣秀引擎</h1>
-  <p>本地AI · 姿态检测 · 智能贴合</p>
+  <p>MoveNet姿态检测 · CPU模式 · 全手机通用</p>
 </header>
 
 <div class="container">
@@ -69,28 +69,20 @@ canvas{display:none}
   </div>
 </div>
 
-<canvas id="workCanvas"></canvas>
+<canvas id="debug"></canvas>
 
-<!-- 必须在TF.js加载前限制WebGL纹理(手机GPU仅1024×1024) -->
-<script>
-window.TF_ENV = {
-  WEBGL_MAX_TEXTURE_SIZE: 256,
-  WEBGL_CPU_FORWARD: true
-};
-</script>
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0/dist/tf.min.js"></script>
+<!-- 只加载CPU版TF.js，WebGL根本不引入 -->
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core@4.17.0/dist/tf-core.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter@4.17.0/dist/tf-converter.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-cpu@4.17.0/dist/tf-backend-cpu.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@2.1.3/dist/pose-detection.min.js"></script>
 
 <script>
-// ============ 状态 ============
-let personImg = null, clothImg = null;
-let detector = null;
-const canvas = document.getElementById('workCanvas');
-const ctx = canvas.getContext('2d');
+// ============ 全局变量 ============
+let personImg = null, clothImg = null, detector = null;
+const statusEl = document.getElementById('status');
 
-// ============ 图片加载 + 强制压缩 ============
-const MAX_SIZE = 800;
-
+// ============ 图片加载（强制压缩）============
 function loadImage(input, type) {
   const file = input.files[0];
   if (!file) return;
@@ -98,12 +90,12 @@ function loadImage(input, type) {
   reader.onload = (e) => {
     const img = new Image();
     img.onload = () => {
-      // 始终压缩，防止WebGL纹理溢出
-      const scale = Math.min(1, MAX_SIZE / Math.max(img.width, img.height));
-      const tmp = document.createElement('canvas');
-      tmp.width = Math.round(img.width * scale);
-      tmp.height = Math.round(img.height * scale);
-      tmp.getContext('2d').drawImage(img, 0, 0, tmp.width, tmp.height);
+      // 强制压到600以内
+      const max = 600, s = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width * s);
+      c.height = Math.round(img.height * s);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
       const final = new Image();
       final.onload = () => {
         if (type === 'person') {
@@ -116,10 +108,9 @@ function loadImage(input, type) {
           document.getElementById('clothArea').classList.add('has');
         }
         updateBtn();
-        document.getElementById('status').textContent
-          = '压缩: ' + img.width + '→' + tmp.width + 'px';
+        statusEl.textContent = '图片就绪: ' + final.width + '×' + final.height;
       };
-      final.src = tmp.toDataURL('image/jpeg', 0.8);
+      final.src = c.toDataURL('image/jpeg', 0.8);
     };
     img.src = e.target.result;
   };
@@ -132,264 +123,150 @@ function updateBtn() {
   btn.textContent = (personImg && clothImg) ? '✨ 开始试穿' : '⚠️ 请先上传两张图片';
 }
 
-// ============ 姿态检测初始化 ============
+// ============ MoveNet初始化（CPU）============
 async function initDetector() {
   if (detector) return detector;
-  document.getElementById('status').textContent = '正在加载AI引擎...';
+  statusEl.textContent = '正在加载MoveNet模型（首次约5秒）...';
 
-  // 强制CPU后端（GPU仅1024px，无论如何都会崩）
-  try {
-    await tf.setBackend('cpu');
-    await tf.ready();
-  } catch(e) {
-    tf.env().set('WEBGL_MAX_TEXTURE_SIZE', 256);
-    await tf.ready();
-  }
+  // 注册CPU后端（只有CPU，没有WebGL可选）
+  await tf.setBackend('cpu');
+  await tf.ready();
 
-  document.getElementById('status').textContent = '正在加载姿态模型...';
-  const model = poseDetection.SupportedModels.BlazePose;
+  const model = poseDetection.SupportedModels.MoveNet;
   detector = await poseDetection.createDetector(model, {
     runtime: 'tfjs',
-    modelType: 'lite'
+    modelType: 'SinglePose.Lightning'
   });
-  document.getElementById('status').textContent = '✅ 引擎就绪（CPU模式）';
+  statusEl.textContent = '✅ MoveNet已就绪';
   return detector;
 }
 
-// ============ 试穿核心逻辑 ============
+// ============ 核心：试穿 ============
 async function doTryOn() {
   if (!personImg || !clothImg) return;
 
-  const loader = document.getElementById('loader');
-  const status = document.getElementById('status');
-  const resultCard = document.getElementById('resultCard');
-  resultCard.style.display = 'none';
-  loader.classList.add('show');
-  status.textContent = '';
+  document.getElementById('loader').classList.add('show');
+  document.getElementById('resultCard').style.display = 'none';
+  statusEl.textContent = '';
 
   try {
-    // 1. 初始化姿态检测器
     const det = await initDetector();
 
-    // 2. 检测人物姿态（直接传图片，避免canvas纹理问题）
-    status.textContent = '正在检测人体姿态...';
-    const poses = await det.estimatePoses(personImg, { flipHorizontal: false });
+    // 检测姿态
+    statusEl.textContent = '正在分析人体姿态...';
+    const poses = await det.estimatePoses(personImg);
 
-    if (!poses || poses.length === 0 || !poses[0].keypoints) {
+    if (!poses || !poses.length || !poses[0].keypoints) {
       throw new Error('未检测到人体，请上传清晰的正面站立全身照');
     }
 
-    const kp = poses[0].keypoints;
-    const getKP = (name) => kp.find(k => k.name === name);
+    const kp = {};
+    for (let k of poses[0].keypoints) kp[k.name] = k;
 
-    // 3. 提取关键点
-    const lShoulder = getKP('left_shoulder');
-    const rShoulder = getKP('right_shoulder');
-    const lHip = getKP('left_hip');
-    const rHip = getKP('right_hip');
-    const lElbow = getKP('left_elbow');
-    const rElbow = getKP('right_elbow');
-    const nose = getKP('nose');
+    // MoveNet关键点映射
+    const lSh = kp['left_shoulder'];
+    const rSh = kp['right_shoulder'];
+    const lHip = kp['left_hip'];
+    const rHip = kp['right_hip'];
+    const lElb = kp['left_elbow'];
+    const rElb = kp['right_elbow'];
 
-    // 验证关键点
-    if (!lShoulder || !rShoulder || !lHip || !rHip) {
-      throw new Error('姿态检测不完整，请确保全身可见且正面站立');
+    if (!lSh || !rSh || !lHip || !rHip) {
+      throw new Error('请确保人物全身可见，正面站立');
+    }
+    if ([lSh,rSh,lHip,rHip].some(k => k.score < 0.3)) {
+      throw new Error('姿态置信度不足，请确保光线充足、背景简洁');
     }
 
-    // 只使用置信度高于0.3的点
-    const minConf = 0.3;
-    if ([lShoulder,rShoulder,lHip,rHip].some(k => k.score < minConf)) {
-      throw new Error('请确保人物清晰可见，光线充足，正面站立');
-    }
+    statusEl.textContent = '正在智能贴合衣服...';
 
-    status.textContent = '正在智能贴合...';
-
-    // 4. 计算身体区域
-    const shoulderW = Math.abs(rShoulder.x - lShoulder.x); // 肩宽
-    const hipW = Math.abs(rHip.x - lHip.x);                // 臀宽
-    const bodyH = Math.abs((lHip.y + rHip.y)/2 - (lShoulder.y + rShoulder.y)/2); // 躯干高度
-
-    // 扩展区域（衣服需要比身体略大）
-    const padX = shoulderW * 0.2;
-    const padY = bodyH * 0.15;
-
-    const topY = Math.min(lShoulder.y, rShoulder.y) - padY;
-    const botY = Math.max(lHip.y, rHip.y) + padY * 0.5;
-
-    // 5. 计算颈部位置（领口）
-    const neckY = nose ? (nose.y + (lShoulder.y + rShoulder.y)/2) / 2 : topY;
-
-    // 6. 渲染结果图
+    // 渲染
+    const canvas = document.getElementById('debug');
     canvas.width = personImg.width;
     canvas.height = personImg.height;
+    const ctx = canvas.getContext('2d');
 
-    // 底图：原人物
+    // 底图
     ctx.drawImage(personImg, 0, 0);
 
-    // 衣服变形贴合
-    const clothW = clothImg.width;
-    const clothH = clothImg.height;
+    // 身体测量
+    const shoulderW = Math.abs(rSh.x - lSh.x);
+    const hipW = Math.abs(rHip.x - lHip.x);
+    const torsoTop = Math.min(lSh.y, rSh.y);
+    const torsoBot = Math.max(lHip.y, rHip.y);
+    const torsoH = torsoBot - torsoTop;
+    const centerX = (lSh.x + rSh.x + lHip.x + rHip.x) / 4;
 
-    // 躯干梯形坐标 [左上, 右上, 右下, 左下]
-    const torsoTopW = shoulderW + padX * 2;
-    const torsoBotW = Math.max(shoulderW, hipW) + padX * 1.5;
+    // 扩展区域
+    const pad = shoulderW * 0.3;
+    const topY = torsoTop - pad;
+    const botY = torsoBot + pad * 0.5;
+    const topW = shoulderW + pad * 2;
+    const botW = Math.max(shoulderW, hipW) + pad * 2;
 
-    // 分别处理躯干和袖子
-    // 主躯干区域
-    const torsoLeft = (lShoulder.x + rShoulder.x)/2 - torsoTopW/2;
-    const torsoRight = torsoLeft + torsoTopW;
-    const torsoBotLeft = (lHip.x + rHip.x)/2 - torsoBotW/2;
-    const torsoBotRight = torsoBotLeft + torsoBotW;
+    // 分段变形渲染衣服
+    const segs = 8;
+    for (let i = 0; i < segs; i++) {
+      const t0 = i / segs, t1 = (i + 1) / segs;
 
-    // 7. 使用分段仿射变换进行衣服贴合
-    // 将衣服分成3段（上中下），每段做仿射变换
-    const segments = 6;
-    for (let i = 0; i < segments; i++) {
-      const t0 = i / segments;
-      const t1 = (i + 1) / segments;
-
-      // 源矩形（衣服上的一段）
-      const sx0 = 0;
-      const sy0 = clothH * t0;
-      const sx1 = clothW;
-      const sy1 = clothH * t1;
-
-      // 目标梯形段（身体上对应的段）
-      const dx0_top = torsoLeft + (torsoBotLeft - torsoLeft) * t0;
       const dy0 = topY + (botY - topY) * t0;
-      const dx1_top = torsoRight + (torsoBotRight - torsoRight) * t0;
-
-      const dx0_bot = torsoLeft + (torsoBotLeft - torsoLeft) * t1;
       const dy1 = topY + (botY - topY) * t1;
-      const dx1_bot = torsoRight + (torsoBotRight - torsoRight) * t1;
+      const sy0 = t0 * clothImg.height;
+      const sy1 = t1 * clothImg.height;
 
-      // 绘制变形后的衣服段
-      drawWarpedSegment(sx0, sy0, sx1, sy1, dx0_top, dx1_top, dy0, dx0_bot, dx1_bot, dy1);
+      const tw0 = topW + (botW - topW) * t0;
+      const tw1 = topW + (botW - topW) * t1;
+      const dx0 = centerX - tw0 / 2;
+      const dx1 = centerX + tw0 / 2;
+      const dx0b = centerX - tw1 / 2;
+      const dx1b = centerX + tw1 / 2;
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(dx0, dy0); ctx.lineTo(dx1, dy0);
+      ctx.lineTo(dx1b, dy1); ctx.lineTo(dx0b, dy1);
+      ctx.closePath(); ctx.clip();
+
+      const sx = clothImg.width / 2;
+      const sw = clothImg.width;
+      const scaleX = ((tw0 + tw1) / 2) / sw;
+      const scaleY = (dy1 - dy0) / (sy1 - sy0);
+
+      ctx.translate(centerX, (dy0 + dy1) / 2);
+      ctx.scale(Math.max(scaleX, 0.3), Math.max(scaleY, 0.3));
+      ctx.drawImage(clothImg, -clothImg.width/2, -(sy0 + sy1)/2, clothImg.width, clothImg.height);
+      ctx.restore();
     }
 
-    // 8. 袖子处理（基于肘部位置）
-    if (lElbow && lElbow.score > 0.3) {
-      drawSleeve(lShoulder, lElbow, clothImg, 'left', shoulderW, bodyH, padY);
-    }
-    if (rElbow && rElbow.score > 0.3) {
-      drawSleeve(rShoulder, rElbow, clothImg, 'right', shoulderW, bodyH, padY);
-    }
+    // 袖子
+    if (lElb && lElb.score > 0.3) drawSleeve(ctx, lSh, lElb, clothImg, shoulderW);
+    if (rElb && rElb.score > 0.3) drawSleeve(ctx, rSh, rElb, clothImg, shoulderW);
 
-    // 9. 领口优化
-    blendNeckline(neckY, lShoulder, rShoulder);
-
-    // 10. 显示结果
-    const resultURL = canvas.toDataURL('image/jpeg', 0.92);
-    document.getElementById('resultImg').src = resultURL;
-    resultCard.style.display = 'block';
-    status.textContent = '✅ 试穿完成！';
+    // 显示
+    document.getElementById('resultImg').src = canvas.toDataURL('image/jpeg', 0.9);
+    document.getElementById('resultCard').style.display = 'block';
+    statusEl.textContent = '✅ 试穿完成！';
 
   } catch(e) {
-    status.textContent = '❌ ' + e.message;
-    console.error(e);
+    statusEl.textContent = '❌ ' + e.message;
   } finally {
-    loader.classList.remove('show');
+    document.getElementById('loader').classList.remove('show');
   }
 }
 
-// ============ 变形绘制函数 ============
-function drawWarpedSegment(sx0, sy0, sx1, sy1, dx0t, dx1t, dy0, dx0b, dx1b, dy1) {
-  // 使用四边形网格进行变形
-  const steps = 8;
-  const stripH = (dy1 - dy0) / steps;
-
-  for (let i = 0; i < steps; i++) {
-    const frac = i / steps;
-    const fracN = (i + 1) / steps;
-
-    // 源坐标
-    const syA = sy0 + (sy1 - sy0) * frac;
-    const syB = sy0 + (sy1 - sy0) * fracN;
-
-    // 目标坐标（梯形插值）
-    const dxA_top = dx0t + (dx0b - dx0t) * frac;
-    const dxA_bot = dx0t + (dx0b - dx0t) * fracN;
-    const dxB_top = dx1t + (dx1b - dx1t) * frac;
-    const dxB_bot = dx1t + (dx1b - dx1t) * fracN;
-    const dyA = dy0 + stripH * i;
-    const dyB = dy0 + stripH * (i + 1);
-
-    // 目标四边形宽度
-    const wTop = dxB_top - dxA_top;
-    const wBot = dxB_bot - dxA_bot;
-
-    // 绘制变形strip
-    ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(dxA_top, dyA);
-    ctx.lineTo(dxB_top, dyA);
-    ctx.lineTo(dxB_bot, dyB);
-    ctx.lineTo(dxA_bot, dyB);
-    ctx.closePath();
-    ctx.clip();
-
-    // 计算源矩形中心
-    const scx = (sx0 + sx1) / 2;
-    const scy = (syA + syB) / 2;
-
-    // 绘制缩放后的衣服片段
-    const scaleX = ((wTop + wBot) / 2) / (sx1 - sx0);
-    const scaleY = (dyB - dyA) / (syB - syA);
-
-    ctx.translate((dxA_top + dxB_top) / 2, (dyA + dyB) / 2);
-    ctx.scale(scaleX, scaleY);
-    ctx.drawImage(clothImg, -scx, -scy, clothImg.width, clothImg.height);
-    ctx.restore();
-  }
-}
-
-// ============ 袖子绘制 ============
-function drawSleeve(shoulder, elbow, clothImg, side, shoulderW, bodyH, padY) {
-  const sleeveLen = Math.sqrt((elbow.x - shoulder.x)**2 + (elbow.y - shoulder.y)**2);
-  const angle = Math.atan2(elbow.y - shoulder.y, elbow.x - shoulder.x);
-
-  const sleeveW = shoulderW * 0.35;
-
-  // 从衣服图片左侧或右侧取袖子区域
-  const sx = side === 'left' ? 0 : clothImg.width * 0.82;
-  const sy = 0;
-  const sw = clothImg.width * 0.18;
-  const sh = clothImg.height * 0.5;
+// ============ 袖子 ============
+function drawSleeve(ctx, shoulder, elbow, clothImg, shoulderW) {
+  const dx = elbow.x - shoulder.x;
+  const dy = elbow.y - shoulder.y;
+  const len = Math.sqrt(dx*dx + dy*dy);
+  const ang = Math.atan2(dy, dx);
+  const sw = shoulderW * 0.3;
 
   ctx.save();
   ctx.translate(shoulder.x, shoulder.y);
-  ctx.rotate(angle);
-
-  // 袖子需要跟随手臂角度
-  ctx.drawImage(clothImg, sx, sy, sw, sh, -sleeveW/2, 0, sleeveW, sleeveLen);
-
-  ctx.restore();
-}
-
-// ============ 领口优化 ============
-function blendNeckline(neckY, lShoulder, rShoulder) {
-  const neckW = Math.abs(rShoulder.x - lShoulder.x) * 0.3;
-  const neckX = (lShoulder.x + rShoulder.x) / 2;
-
-  // 在领口处做渐变透明，让原始皮肤露出
-  const grad = ctx.createLinearGradient(0, neckY - 15, 0, neckY + 10);
-  grad.addColorStop(0, 'rgba(0,0,0,0)');
-  grad.addColorStop(1, 'rgba(0,0,0,0.15)');
-
-  // 这里我们无法直接对已绘制内容做mask
-  // 用一个柔和的技巧：在领口区域画一个小渐变遮罩
-  ctx.save();
-  ctx.globalCompositeOperation = 'destination-out';
-  ctx.fillStyle = grad;
-  ctx.beginPath();
-  ctx.ellipse(neckX, neckY, neckW, 12, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
-
-  // 恢复领口区域的原始皮肤（通过重绘）
-  ctx.save();
-  ctx.globalCompositeOperation = 'destination-over';
-  ctx.drawImage(personImg, 0, 0);
+  ctx.rotate(ang);
+  ctx.drawImage(clothImg, 0, 0, clothImg.width * 0.2, clothImg.height * 0.5,
+    -sw/2, 0, sw, len);
   ctx.restore();
 }
 
@@ -403,8 +280,8 @@ function downloadResult() {
   a.click();
 }
 
-// ============ 预加载模型 ============
-setTimeout(() => initDetector().catch(() => {}), 1000);
+// ============ 预加载 ============
+setTimeout(() => initDetector().catch(e => { statusEl.textContent = '模型加载失败: ' + e.message; }), 1000);
 </script>
 </body>
 </html>
