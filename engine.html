@@ -81,7 +81,9 @@ let detector = null;
 const canvas = document.getElementById('workCanvas');
 const ctx = canvas.getContext('2d');
 
-// ============ 图片加载 ============
+// ============ 图片加载 + 自动压缩 ============
+const MAX_SIZE = 1024; // WebGL纹理上限
+
 function loadImage(input, type) {
   const file = input.files[0];
   if (!file) return;
@@ -89,20 +91,39 @@ function loadImage(input, type) {
   reader.onload = (e) => {
     const img = new Image();
     img.onload = () => {
-      if (type === 'person') {
-        personImg = img;
-        document.getElementById('personImg').src = e.target.result;
-        document.getElementById('personArea').classList.add('has');
+      // 自动压缩超大图片
+      const scale = Math.min(1, MAX_SIZE / Math.max(img.width, img.height));
+      if (scale < 1) {
+        const c = document.createElement('canvas');
+        c.width = Math.round(img.width * scale);
+        c.height = Math.round(img.height * scale);
+        const cx = c.getContext('2d');
+        cx.drawImage(img, 0, 0, c.width, c.height);
+        const compressed = new Image();
+        compressed.onload = () => {
+          setImage(compressed, e.target.result, type);
+        };
+        compressed.src = c.toDataURL('image/jpeg', 0.85);
       } else {
-        clothImg = img;
-        document.getElementById('clothImg').src = e.target.result;
-        document.getElementById('clothArea').classList.add('has');
+        setImage(img, e.target.result, type);
       }
-      updateBtn();
     };
     img.src = e.target.result;
   };
   reader.readAsDataURL(file);
+}
+
+function setImage(img, dataURL, type) {
+  if (type === 'person') {
+    personImg = img;
+    document.getElementById('personImg').src = dataURL;
+    document.getElementById('personArea').classList.add('has');
+  } else {
+    clothImg = img;
+    document.getElementById('clothImg').src = dataURL;
+    document.getElementById('clothArea').classList.add('has');
+  }
+  updateBtn();
 }
 
 function updateBtn() {
