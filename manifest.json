@@ -1,12 +1,12 @@
 {
-  "name": "AI 智能试穿",
-  "short_name": "AI试穿",
+  "name": "试衣秀 · AI智能试穿",
+  "short_name": "试衣秀",
   "description": "上传照片一键AI虚拟试穿",
   "start_url": ".",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#f5f3ff",
-  "theme_color": "#4f46e5",
+  "background_color": "#fdf2f7",
+  "theme_color": "#ec4899",
   "icons": [{
     "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='40' fill='%234f46e5'/><text x='96' y='130' font-size='110' text-anchor='middle'>👗</text></svg>",
     "sizes": "192x192",
