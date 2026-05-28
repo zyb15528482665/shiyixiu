@@ -436,8 +436,9 @@ function updateTryOnBtn() {
     : '⚠️ 请先上传照片并选择服装';
 }
 
-// ============ FitDiT 服务器配置 ============
-let fitditServer = localStorage.getItem('fitdit_server') || '192.168.0.101:7860';
+// ============ 试穿引擎配置 ============
+// 优先级: 1.ModelScope云端(免费) 2.本地FitDiT
+let engineMode = localStorage.getItem('engine_mode') || 'modelscope';
 
 // ============ AI 试穿 ============
 async function startTryOn() {
@@ -446,14 +447,22 @@ async function startTryOn() {
   showLoading(true);
 
   try {
-    // 尝试本地 FitDiT
-    const result = await callFitDiT(personImage, clothImage);
+    let result = null;
+
+    if (engineMode === 'modelscope') {
+      result = await callModelScope(personImage, clothImage);
+    }
+
+    if (!result) {
+      result = await callFitDiT(personImage, clothImage);
+    }
 
     if (result) {
       document.getElementById('resultImage').src = result;
       document.getElementById('resultOverlay').classList.add('show');
+      showLoading(false);
     } else {
-      throw new Error('本地 FitDiT 未响应');
+      throw new Error('所有引擎均未响应');
     }
   } catch(e) {
     console.error('VTON error:', e);
@@ -461,6 +470,50 @@ async function startTryOn() {
     showServerGuide();
   }
 }
+
+async function callModelScope(personDataURL, clothDataURL) {
+  // ModelScope OutfitAnyone Gradio API
+  // 阿里魔搭社区 - 国内直连
+  const endpoints = [
+    // 方式1: ModelScope Studio 直连
+    'https://modelscope.cn/studios/DAMOXR/OutfitAnyone/api/predict',
+    // 方式2: ModelScope API 网关
+    'https://api.modelscope.cn/v1/studio/DAMOXR/OutfitAnyone/gradio/api/predict',
+    // 方式3: 备用 - 直接 Gradio 地址
+    'https://damoxr-outfitanyone.gradio.app/api/predict',
+  ];
+
+  for (const endpoint of endpoints) {
+    try {
+      // Gradio API: POST JSON with {data: [...]}
+      // OutfitAnyone 输入: [person_image, upper_cloth_img, lower_cloth_img]
+      const payload = JSON.stringify({
+        data: [personDataURL, clothDataURL, null]
+      });
+
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: payload,
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.data) {
+          const result = Array.isArray(data.data) ? data.data[0] : data.data;
+          if (result && typeof result === 'string') return result;
+        }
+      }
+    } catch(e) {
+      console.log('ModelScope endpoint failed:', endpoint, e.message);
+    }
+  }
+
+  return null;
+}
+
+// ============ 本地 FitDiT 备用 ============
+let fitditServer = localStorage.getItem('fitdit_server') || '192.168.0.101:7860';
 
 async function callFitDiT(personDataURL, clothDataURL) {
   const serverUrl = `http://${fitditServer}`;
