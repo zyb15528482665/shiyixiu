@@ -2,685 +2,380 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="试衣秀">
-<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='40' fill='%23ec4899'/><text x='96' y='130' font-size='110' text-anchor='middle'>👗</text></svg>">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0%' stop-color='%23d4a574'/><stop offset='100%' stop-color='%23c89b6e'/></linearGradient></defs><rect width='192' height='192' rx='42' fill='url(%23g)'/><text x='96' y='130' font-size='105' text-anchor='middle'>👗</text></svg>">
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#ec4899">
-<title>试衣秀 · AI智能试穿</title>
+<meta name="theme-color" content="#0a0a0f">
+<title>试衣秀 · AI 虚拟试穿</title>
 <style>
-:root {
-  --primary: #4f46e5; --primary-light: #818cf8; --bg: #f5f3ff;
-  --card: #fff; --text: #1e1b4b; --sub: #6b7280; --radius: 16px;
-  --shadow: 0 2px 16px rgba(79,70,229,0.08);
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap');
+
+:root{
+  --gold:#c8a87c;--gold-light:#e0ceb0;--gold-dark:#a07840;
+  --bg:#08080d;--surface:#12121a;--surface2:#1a1a26;
+  --card:rgba(22,22,35,0.8);--border:rgba(200,168,124,0.12);
+  --text:#ebe5dd;--sub:#8a8278;--dim:#5a5550;
+  --radius:18px;--shadow:0 8px 32px rgba(0,0,0,0.4);
+  --blur:blur(20px);
+  --font:"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
 }
-* { margin:0; padding:0; box-sizing:border-box; }
-body {
-  font-family: "PingFang SC","Microsoft YaHei",-apple-system,sans-serif;
-  background: var(--bg); color: var(--text);
-  min-height: 100dvh; padding-bottom: 30px;
-  -webkit-tap-highlight-color: transparent;
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:var(--font);background:var(--bg);color:var(--text);
+  min-height:100dvh;padding-bottom:40px;
+  -webkit-tap-highlight-color:transparent;
+  background-image:
+    radial-gradient(ellipse at 50% 0%,rgba(200,168,124,0.06) 0%,transparent 60%),
+    radial-gradient(ellipse at 80% 20%,rgba(200,168,124,0.04) 0%,transparent 40%),
+    radial-gradient(ellipse at 20% 60%,rgba(180,140,100,0.03) 0%,transparent 30%);
 }
 
-/* Header */
-header {
-  padding: 16px 20px 12px; text-align: center;
-  background: linear-gradient(135deg, #4f46e5, #7c3aed);
-  color: #fff; border-radius: 0 0 24px 24px;
+/* ── Header ── */
+header{
+  padding:22px 20px 18px;text-align:center;
+  background:linear-gradient(180deg,rgba(22,22,35,0.95) 0%,rgba(8,8,13,0) 100%);
+  border-bottom:1px solid var(--border);
 }
-header h1 { font-size: 22px; font-weight: 800; }
-header p  { font-size: 12px; opacity: 0.8; margin-top: 2px; }
+header .logo{font-size:13px;letter-spacing:4px;color:var(--gold);text-transform:uppercase;margin-bottom:4px}
+header h1{font-size:26px;font-weight:900;letter-spacing:2px;
+  background:linear-gradient(135deg,var(--gold-light),var(--gold),var(--gold-dark));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+header p{font-size:11px;color:var(--dim);margin-top:2px;letter-spacing:1px}
 
-/* Step indicator */
-.steps {
-  display: flex; justify-content: center; gap: 8px;
-  margin: 16px 16px 0; font-size: 12px; color: var(--sub);
+/* ── Cards ── */
+.card{
+  margin:16px 16px;padding:20px;
+  background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius);backdrop-filter:var(--blur);
+  -webkit-backdrop-filter:var(--blur);
+  box-shadow:var(--shadow);transition:border-color .3s;
 }
-.step {
-  display: flex; align-items: center; gap: 4px;
-  padding: 6px 12px; border-radius: 20px; background: #e8e5ff;
-}
-.step.active { background: var(--primary); color: #fff; font-weight: 700; }
+.card h3{font-size:14px;font-weight:600;margin-bottom:14px;color:var(--text);display:flex;align-items:center;gap:8px;letter-spacing:.5px}
+.card h3::before{content:'';width:3px;height:16px;background:linear-gradient(180deg,var(--gold-light),var(--gold-dark));border-radius:2px}
 
-/* Cards */
-.card {
-  margin: 14px 16px; padding: 18px;
-  background: var(--card); border-radius: var(--radius);
-  box-shadow: var(--shadow);
+/* ── Upload ── */
+.upload-area{
+  border:1.5px dashed rgba(200,168,124,0.25);border-radius:14px;
+  padding:28px;text-align:center;cursor:pointer;transition:all .35s;
+  background:rgba(200,168,124,0.02);position:relative;overflow:hidden;
 }
-.card h3 { font-size: 15px; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+.upload-area::before{
+  content:'';position:absolute;inset:0;opacity:0;transition:opacity .35s;
+  background:radial-gradient(circle at center,rgba(200,168,124,0.06) 0%,transparent 70%);
+}
+.upload-area:active::before,.upload-area:hover::before{opacity:1}
+.upload-area:active{transform:scale(.97);border-color:var(--gold)}
+.upload-area .icon{font-size:44px;margin-bottom:8px;filter:grayscale(.5)}
+.upload-area .hint{font-size:12px;color:var(--sub);line-height:1.6}
+.upload-area img{max-width:100%;max-height:200px;border-radius:10px;margin-top:10px;box-shadow:0 4px 20px rgba(0,0,0,.3);display:none}
+.upload-area img.show{display:inline}
+.upload-area img.show+.placeholder{display:none}
 
-/* Upload area */
-.upload-area {
-  border: 2px dashed #d4d0f0; border-radius: 14px;
-  padding: 24px; text-align: center; cursor: pointer;
-  transition: all 0.2s; background: #faf9ff;
-  position: relative;
+/* ── Search ── */
+.search-row{display:flex;gap:8px;margin:14px 0}
+.search-input{
+  flex:1;padding:13px 16px;border-radius:14px;
+  border:1px solid var(--border);font-size:14px;font-family:var(--font);
+  background:var(--surface2);color:var(--text);letter-spacing:.5px;
+  transition:border-color .3s;
 }
-.upload-area:active { transform: scale(0.98); background: #f0edff; }
-.upload-area.has-image { border-color: var(--primary); background: #eef2ff; }
-.upload-area .icon { font-size: 40px; margin-bottom: 8px; }
-.upload-area .hint { font-size: 13px; color: var(--sub); }
-.upload-area img {
-  max-width: 100%; max-height: 200px; border-radius: 10px;
-  margin-top: 8px; display: none;
+.search-input::placeholder{color:var(--dim)}
+.search-input:focus{outline:none;border-color:var(--gold)}
+.search-btn{
+  padding:13px 20px;border-radius:14px;border:none;
+  background:linear-gradient(135deg,var(--gold),var(--gold-dark));
+  color:#0a0a0f;font-weight:700;font-size:13px;cursor:pointer;
+  font-family:var(--font);letter-spacing:.5px;transition:all .2s;
+  box-shadow:0 4px 16px rgba(200,168,124,0.2);
 }
-.upload-area.has-image img { display: inline; }
-.upload-area.has-image .placeholder { display: none; }
+.search-btn:active{transform:scale(.94);box-shadow:0 2px 8px rgba(200,168,124,0.15)}
 
-/* Image preview row */
-.preview-row {
-  display: flex; gap: 12px; margin: 0 16px;
+/* ── Clothes Grid ── */
+.clothes-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.clothes-item{
+  aspect-ratio:.75;border-radius:12px;overflow:hidden;cursor:pointer;
+  position:relative;background:var(--surface2);transition:all .3s;
+  box-shadow:0 4px 16px rgba(0,0,0,.2);
 }
-.preview-row .card { flex: 1; margin: 0; text-align: center; }
-.preview-row img {
-  width: 100%; max-height: 180px; object-fit: cover;
-  border-radius: 10px; margin-top: 8px;
+.clothes-item img{width:100%;height:100%;object-fit:cover;transition:transform .4s}
+.clothes-item:active img{transform:scale(1.08)}
+.clothes-item.selected{
+  outline:2.5px solid var(--gold);outline-offset:-2.5px;
+  box-shadow:0 0 24px rgba(200,168,124,0.3);
 }
-
-/* Search */
-.search-row {
-  display: flex; gap: 8px; margin: 0 16px 12px;
-}
-.search-input {
-  flex: 1; padding: 12px 16px; border-radius: 14px;
-  border: 1.5px solid #e0dce8; font-size: 14px;
-  font-family: inherit; background: #fff; color: var(--text);
-}
-.search-input:focus { outline: none; border-color: var(--primary); }
-.search-btn {
-  padding: 12px 18px; border-radius: 14px; border: none;
-  background: var(--primary); color: #fff; font-weight: 700;
-  font-size: 14px; cursor: pointer; font-family: inherit;
-}
-.search-btn:active { transform: scale(0.95); }
-
-/* Clothing grid */
-.clothes-grid {
-  display: grid; grid-template-columns: repeat(3,1fr);
-  gap: 8px; margin: 0 16px;
-}
-.clothes-item {
-  aspect-ratio: 0.75; border-radius: 12px; overflow: hidden;
-  cursor: pointer; position: relative; background: #e8e5ff;
-}
-.clothes-item img {
-  width: 100%; height: 100%; object-fit: cover;
-}
-.clothes-item.selected {
-  outline: 3px solid var(--primary); outline-offset: -3px;
-}
-.clothes-item.selected::after {
-  content: '✓'; position: absolute; top: 6px; right: 6px;
-  background: var(--primary); color: #fff; width: 24px; height: 24px;
-  border-radius: 50%; display: flex; align-items: center;
-  justify-content: center; font-size: 14px; font-weight: 700;
+.clothes-item.selected::after{
+  content:'✓';position:absolute;top:8px;right:8px;
+  background:var(--gold);color:#0a0a0f;width:24px;height:24px;
+  border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:800;box-shadow:0 2px 8px rgba(0,0,0,.3);
 }
 
-/* URL input */
-.url-row {
-  display: flex; gap: 8px; margin: 0 16px 12px;
+/* ── Tags ── */
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.tag{
+  padding:6px 14px;border-radius:20px;border:1px solid var(--border);
+  font-size:11px;color:var(--sub);cursor:pointer;transition:all .2s;
+  background:rgba(200,168,124,0.03);font-family:var(--font);
 }
+.tag:active{background:rgba(200,168,124,0.12);border-color:var(--gold);color:var(--gold-light)}
 
-/* Try-on button */
-.btn-tryon {
-  display: block; width: calc(100% - 32px); margin: 20px 16px;
-  padding: 16px; border-radius: 16px; border: none;
-  background: linear-gradient(135deg, #4f46e5, #7c3aed);
-  color: #fff; font-size: 18px; font-weight: 800;
-  cursor: pointer; font-family: inherit;
-  box-shadow: 0 4px 20px rgba(79,70,229,0.3);
-  transition: all 0.2s;
+/* ── API Key Row ── */
+.key-row{display:flex;gap:8px;margin:0 16px 10px;align-items:center}
+.key-row span{font-size:11px;color:var(--dim);white-space:nowrap;letter-spacing:1px}
+.key-input{
+  flex:1;padding:10px 14px;border-radius:12px;
+  border:1px solid var(--border);font-size:12px;font-family:var(--font);
+  background:var(--surface);color:var(--text);
 }
-.btn-tryon:active { transform: scale(0.96); }
-.btn-tryon:disabled { opacity: 0.5; pointer-events: none; }
+.key-input:focus{outline:none;border-color:var(--gold)}
+.key-save{
+  padding:10px 16px;border-radius:12px;border:1px solid var(--gold);
+  background:transparent;color:var(--gold);font-weight:600;font-size:12px;
+  cursor:pointer;font-family:var(--font);transition:all .2s;
+}
+.key-save:active{background:rgba(200,168,124,0.12)}
 
-/* Loading */
-.loading-overlay {
-  position: fixed; top:0;left:0;right:0;bottom:0;
-  background: rgba(0,0,0,0.6); z-index: 200;
-  display: none; align-items: center; justify-content: center;
-  flex-direction: column;
+/* ── TryOn Button ── */
+.btn-tryon{
+  display:block;width:calc(100% - 32px);margin:20px 16px;padding:18px;
+  border-radius:16px;border:none;
+  background:linear-gradient(135deg,#c8a87c,#a07840);
+  color:#0a0a0f;font-size:16px;font-weight:800;cursor:pointer;
+  font-family:var(--font);letter-spacing:2px;
+  box-shadow:0 8px 32px rgba(200,168,124,0.25);
+  transition:all .3s;position:relative;overflow:hidden;
 }
-.loading-overlay.show { display: flex; }
-.spinner {
-  width: 50px; height: 50px; border: 4px solid rgba(255,255,255,0.2);
-  border-top-color: #fff; border-radius: 50%;
-  animation: spin 0.8s linear infinite;
+.btn-tryon::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,transparent,rgba(255,255,255,0.1),transparent);
+  transform:translateX(-100%);transition:transform .6s;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
-.loading-text { color: #fff; margin-top: 16px; font-size: 14px; }
+.btn-tryon:not(:disabled):hover::after{transform:translateX(100%)}
+.btn-tryon:active{transform:scale(.96);box-shadow:0 4px 16px rgba(200,168,124,0.15)}
+.btn-tryon:disabled{opacity:.35;pointer-events:none;filter:grayscale(.5)}
 
-/* Result */
-.result-overlay {
-  position: fixed; top:0;left:0;right:0;bottom:0;
-  background: rgba(0,0,0,0.8); z-index: 250;
-  display: none; align-items: center; justify-content: center;
-  flex-direction: column; padding: 20px;
+/* ── Loading ── */
+.loading-overlay{
+  position:fixed;inset:0;background:rgba(8,8,13,0.92);z-index:200;
+  display:none;align-items:center;justify-content:center;flex-direction:column;
+  backdrop-filter:blur(10px);
 }
-.result-overlay.show { display: flex; }
-.result-overlay img {
-  max-width: 90%; max-height: 70vh; border-radius: 16px;
-  box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+.loading-overlay.show{display:flex}
+.spinner{
+  width:48px;height:48px;border:2.5px solid rgba(200,168,124,0.15);
+  border-top-color:var(--gold);border-radius:50%;
+  animation:spin .7s cubic-bezier(.6,.2,.4,.8) infinite;
 }
-.result-actions { display: flex; gap: 12px; margin-top: 20px; }
-.result-btn {
-  padding: 12px 24px; border-radius: 14px; border: none;
-  font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit;
-}
-.result-btn.save { background: #fff; color: var(--primary); }
-.result-btn.close { background: rgba(255,255,255,0.2); color: #fff; }
-.result-btn:active { transform: scale(0.95); }
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{color:var(--sub);margin-top:18px;font-size:13px;letter-spacing:1px}
 
-/* Tabs */
-.tabs {
-  display: flex; gap: 4px; margin: 12px 16px;
-  background: #e8e5ff; border-radius: 14px; padding: 4px;
+/* ── Result ── */
+.result-overlay{
+  position:fixed;inset:0;background:rgba(8,8,13,0.96);z-index:250;
+  display:none;align-items:center;justify-content:center;flex-direction:column;padding:24px;
+  backdrop-filter:blur(20px);
 }
-.tab {
-  flex: 1; padding: 10px; border-radius: 12px; border: none;
-  font-size: 13px; font-weight: 600; cursor: pointer;
-  background: transparent; color: var(--sub); font-family: inherit;
-  transition: all 0.2s;
+.result-overlay.show{display:flex}
+.result-overlay img{max-width:92%;max-height:62vh;border-radius:18px;box-shadow:0 16px 48px rgba(0,0,0,.6)}
+.result-actions{display:flex;gap:14px;margin-top:24px}
+.result-btn{
+  padding:14px 28px;border-radius:14px;border:none;
+  font-size:14px;font-weight:700;cursor:pointer;font-family:var(--font);
+  letter-spacing:.5px;transition:all .2s;
 }
-.tab.active { background: #fff; color: var(--primary); box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+.result-btn.primary{background:var(--gold);color:#0a0a0f;box-shadow:0 4px 20px rgba(200,168,124,.25)}
+.result-btn.ghost{background:rgba(255,255,255,0.06);color:var(--text);border:1px solid rgba(255,255,255,.08)}
+.result-btn:active{transform:scale(.94)}
 
-/* Toast */
-.toast {
-  position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%) scale(0.8);
-  background: rgba(30,27,75,0.9); color: #fff; padding: 12px 24px;
-  border-radius: 12px; font-size: 14px; font-weight: 600;
-  z-index: 300; pointer-events: none; opacity: 0;
-  transition: all 0.2s;
+/* ── Toast ── */
+.toast{
+  position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(.85);
+  background:rgba(22,22,35,.95);color:var(--text);padding:14px 26px;
+  border-radius:12px;font-size:13px;font-weight:500;letter-spacing:.5px;
+  z-index:300;pointer-events:none;opacity:0;transition:all .25s;
+  border:1px solid var(--border);backdrop-filter:blur(10px);
 }
-.toast.show { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+.toast.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+
+/* ── File Input Hint ── */
+.file-hint{text-align:center;margin-top:10px;font-size:11px;color:var(--dim)}
+.file-hint span{color:var(--gold);cursor:pointer;transition:color .2s}
+.file-hint span:active{color:var(--gold-light)}
 </style>
 </head>
 <body>
-
 <header>
-  <h1>👗 试衣秀</h1>
-  <p>上传照片 + 选衣服 = 一键AI试穿</p>
+  <div class="logo">Virtual Try-On</div>
+  <h1>试衣秀</h1>
+  <p>AI 虚拟试穿 · 通义万相引擎 · 所见即所穿</p>
 </header>
 
-<div class="steps">
-  <span class="step active" id="step1">① 上传我的照片</span>
-  <span class="step" id="step2">② 选衣服</span>
-  <span class="step" id="step3">③ 试穿</span>
-</div>
-
-<!-- 人物照片 -->
-<div class="card" id="personCard">
-  <h3>📷 我的照片</h3>
-  <div class="upload-area" id="personUpload" onclick="document.getElementById('personInput').click()">
-    <div class="placeholder">
-      <div class="icon">🧍</div>
-      <div class="hint">点击上传全身照或半身照<br>正面站立效果最佳</div>
-    </div>
-    <img id="personPreview" alt="">
-  </div>
-  <input type="file" id="personInput" accept="image/*" style="display:none" onchange="handlePerson(this)">
-</div>
-
-<!-- 服装选择 -->
+<!-- 我的照片 -->
 <div class="card">
-  <h3>👔 选择服装</h3>
-  <div class="tabs">
-    <button class="tab active" onclick="switchClothTab('search')">🔍 搜索</button>
-    <button class="tab" onclick="switchClothTab('url')">🔗 粘贴链接</button>
-    <button class="tab" onclick="switchClothTab('upload')">📁 本地上传</button>
+  <h3>我的照片</h3>
+  <div class="upload-area" id="personArea" onclick="document.getElementById('pf').click()">
+    <div class="placeholder"><div class="icon">🧍</div><div class="hint">点击上传全身照<br>正面站立效果最佳</div></div>
+    <img id="pp">
   </div>
+  <input type="file" id="pf" accept="image/*" style="display:none" onchange="hP(this)">
+</div>
 
-  <!-- 搜索模式 -->
-  <div id="modeSearch">
-    <div class="search-row">
-      <input class="search-input" id="searchInput" placeholder="连衣裙 / 西装 / 衬衫..." onkeydown="if(event.key==='Enter')searchClothes()">
-      <button class="search-btn" onclick="searchClothes()">搜索</button>
-    </div>
-    <div style="display:flex;gap:6px;margin:0 16px 12px;flex-wrap:wrap;">
-      <span style="font-size:11px;color:var(--sub);cursor:pointer;padding:4px 10px;background:#f0edff;border-radius:12px;" onclick="quickSearch('碎花连衣裙')">碎花连衣裙</span>
-      <span style="font-size:11px;color:var(--sub);cursor:pointer;padding:4px 10px;background:#f0edff;border-radius:12px;" onclick="quickSearch('西装外套')">西装外套</span>
-      <span style="font-size:11px;color:var(--sub);cursor:pointer;padding:4px 10px;background:#f0edff;border-radius:12px;" onclick="quickSearch('卫衣')">卫衣</span>
-      <span style="font-size:11px;color:var(--sub);cursor:pointer;padding:4px 10px;background:#f0edff;border-radius:12px;" onclick="quickSearch('牛仔裤')">牛仔裤</span>
-      <span style="font-size:11px;color:var(--sub);cursor:pointer;padding:4px 10px;background:#f0edff;border-radius:12px;" onclick="quickSearch('针织衫')">针织衫</span>
-      <span style="font-size:11px;color:var(--sub);cursor:pointer;padding:4px 10px;background:#f0edff;border-radius:12px;" onclick="quickSearch('T恤')">T恤</span>
-    </div>
-    <div class="clothes-grid" id="clothesGrid">
-      <div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--sub);font-size:13px;">
-        输入关键词搜索服装 👆
-      </div>
-    </div>
+<!-- 衣服选择 -->
+<div class="card">
+  <h3>选择服装</h3>
+  <div class="tags">
+    <span class="tag" onclick="qs('碎花连衣裙')">碎花连衣裙</span>
+    <span class="tag" onclick="qs('西装外套')">西装外套</span>
+    <span class="tag" onclick="qs('针织开衫')">针织开衫</span>
+    <span class="tag" onclick="qs('阔腿裤')">阔腿裤</span>
+    <span class="tag" onclick="qs('风衣')">风衣</span>
+    <span class="tag" onclick="qs('衬衫')">衬衫</span>
   </div>
+  <div class="search-row">
+    <input class="search-input" id="sq" placeholder="搜索你想要的服装..." onkeydown="if(event.key==='Enter')search()">
+    <button class="search-btn" onclick="search()">搜索</button>
+  </div>
+  <div class="clothes-grid" id="grid">
+    <div style="grid-column:1/-1;text-align:center;padding:32px;color:var(--dim);font-size:12px;letter-spacing:.5px">🔍 输入关键词搜索服装</div>
+  </div>
+  <div class="file-hint">或 <span onclick="document.getElementById('cf').click()">📁 本地上传衣服图片</span></div>
+  <input type="file" id="cf" accept="image/*" style="display:none" onchange="hC(this)">
+  <div class="upload-area" id="clothArea" style="margin-top:10px;display:none">
+    <img id="cp">
+  </div>
+</div>
 
-  <!-- URL模式 -->
-  <div id="modeUrl" style="display:none;">
-    <div class="url-row">
-      <input class="search-input" id="urlInput" placeholder="粘贴衣服图片链接（淘宝/小红书/任意网址的图）">
-      <button class="search-btn" onclick="loadUrlImage()">加载</button>
-    </div>
-    <div style="text-align:center;">
-      <img id="urlPreview" style="max-width:80%;max-height:200px;border-radius:12px;display:none;" alt="">
-    </div>
-  </div>
-
-  <!-- 上传模式 -->
-  <div id="modeUpload" style="display:none;">
-    <div class="upload-area" id="clothUpload" onclick="document.getElementById('clothInput').click()">
-      <div class="placeholder">
-        <div class="icon">👕</div>
-        <div class="hint">点击上传衣服图片<br>最好是白底或平铺图</div>
-      </div>
-      <img id="clothPreview" alt="">
-    </div>
-    <input type="file" id="clothInput" accept="image/*" style="display:none" onchange="handleCloth(this)">
-  </div>
+<!-- API Key -->
+<div class="key-row">
+  <span>API KEY</span>
+  <input class="key-input" id="ak" placeholder="sk-xxxxxxxx" value="">
+  <button class="key-save" onclick="saveKey()">保存</button>
 </div>
 
 <!-- 试穿按钮 -->
-<button class="btn-tryon" id="btnTryon" onclick="startTryOn()">
-  ✨ 一键 AI 试穿
-</button>
+<button class="btn-tryon" id="btnT" disabled onclick="doIt()">✦ 开始试穿</button>
 
-<!-- 结果弹窗 -->
-<div class="result-overlay" id="resultOverlay">
-  <img id="resultImage" alt="试穿结果">
-  <div class="result-actions">
-    <button class="result-btn close" onclick="closeResult()">✕ 关闭</button>
-    <button class="result-btn save" onclick="downloadResult()">💾 保存到相册</button>
-  </div>
+<!-- Loading -->
+<div class="loading-overlay" id="loading">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loadingText">AI 正在生成试穿效果...</div>
 </div>
 
-<!-- 加载遮罩 -->
-<div class="loading-overlay" id="loadingOverlay">
-  <div class="spinner"></div>
-  <div class="loading-text">AI 正在为你试穿...</div>
+<!-- Result -->
+<div class="result-overlay" id="result">
+  <img id="ri" alt="试穿结果">
+  <div class="result-actions">
+    <button class="result-btn ghost" onclick="document.getElementById('result').classList.remove('show')">关闭</button>
+    <button class="result-btn primary" onclick="dl()">💾 保存到相册</button>
+  </div>
 </div>
 
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
 <script>
-// ============ 状态 ============
-let personImage = null;       // dataURL
-let clothImage = null;       // dataURL
-let selectedTab = 'search';
+let person=null,cloth=null,ak=localStorage.getItem('ak')||'';
+document.getElementById('ak').value=ak;
 
-// Unsplash API (免费, 50次/小时)
-const UNSPLASH_KEY = 'demo'; // demo key, 限速但不需注册
+function hP(i){const f=i.files[0];if(!f)return;compress(f,d=>{
+  person=d;document.getElementById('pp').src=d;document.getElementById('pp').classList.add('show');
+  updateBtn()})}
+function hC(i){const f=i.files[0];if(!f)return;compress(f,d=>{
+  cloth=d;document.getElementById('cp').src=d;document.getElementById('cp').classList.add('show');
+  document.getElementById('clothArea').style.display='block';updateBtn()})}
+function compress(f,cb){const r=new FileReader();r.onload=e=>{
+  const img=new Image();img.onload=()=>{
+    const mx=800,s=Math.min(1,mx/Math.max(img.width,img.height));
+    const cv=document.createElement('canvas');cv.width=img.width*s;cv.height=img.height*s;
+    cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+    cb(cv.toDataURL('image/jpeg',.85))};img.src=e.target.result};r.readAsDataURL(f)}
 
-// ============ 人物照片 ============
-function handlePerson(input) {
-  const file = input.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    personImage = e.target.result;
-    document.getElementById('personPreview').src = personImage;
-    document.getElementById('personUpload').classList.add('has-image');
-    document.getElementById('step1').classList.remove('active');
-    document.getElementById('step2').classList.add('active');
-    updateTryOnBtn();
-  };
-  reader.readAsDataURL(file);
+function updateBtn(){const b=document.getElementById('btnT');b.disabled=!(person&&cloth)}
+function saveKey(){ak=document.getElementById('ak').value.trim();localStorage.setItem('ak',ak);toast('API Key 已保存')}
+
+function qs(q){document.getElementById('sq').value=q;search()}
+async function search(){
+  const q=document.getElementById('sq').value||'连衣裙';
+  const g=document.getElementById('grid');g.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:32px;color:var(--dim);font-size:12px">搜索中...</div>';
+  try{
+    const r=await fetch('https://api.unsplash.com/search/photos?query='+encodeURIComponent(q+' fashion clothing')+'&per_page=30&client_id=demo');
+    const d=await r.json();
+    if(d.results)g.innerHTML=d.results.map(r=>`<div class="clothes-item" onclick="sel(this,'${r.urls.regular.replace(/'/g,"\\'")}')"><img src="${r.urls.small}" loading="lazy"></div>`).join('');
+    else g.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:32px;color:var(--dim);font-size:12px">未找到结果</div>';
+  }catch(e){g.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:32px;color:var(--dim);font-size:12px">网络异常，请本地上传</div>'}
 }
 
-// ============ 服装上传 ============
-function handleCloth(input) {
-  const file = input.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    clothImage = e.target.result;
-    document.getElementById('clothPreview').src = clothImage;
-    document.getElementById('clothUpload').classList.add('has-image');
-    document.getElementById('step2').classList.remove('active');
-    document.getElementById('step3').classList.add('active');
-    updateTryOnBtn();
-  };
-  reader.readAsDataURL(file);
-}
-
-// ============ 服装搜索 ============
-async function searchClothes() {
-  const query = document.getElementById('searchInput').value || '连衣裙';
-  const grid = document.getElementById('clothesGrid');
-  grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--sub);">搜索中...</div>';
-
-  try {
-    const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query + ' fashion clothing')}&per_page=30&client_id=${UNSPLASH_KEY}`;
-    const res = await fetch(url);
-    const data = await res.json();
-
-    if (data.results && data.results.length > 0) {
-      grid.innerHTML = data.results.map((r, i) => `
-        <div class="clothes-item" onclick="selectCloth(this, '${r.urls.regular.replace(/'/g,"\\'")}')">
-          <img src="${r.urls.small}" alt="" loading="lazy">
-        </div>
-      `).join('');
-    } else {
-      grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--sub);">未找到结果，换个关键词试试</div>';
-    }
-  } catch(e) {
-    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--sub);">网络不可用（可能需要翻墙访问 Unsplash）<br>请切换到「本地上传」模式</div>';
-  }
-}
-
-function quickSearch(q) {
-  document.getElementById('searchInput').value = q;
-  searchClothes();
-}
-
-function selectCloth(el, url) {
-  document.querySelectorAll('.clothes-item').forEach(i => i.classList.remove('selected'));
+async function sel(el,url){
+  document.querySelectorAll('.clothes-item').forEach(i=>i.classList.remove('selected'));
   el.classList.add('selected');
+  try{const r=await fetch(url);const b=await r.blob();
+    const rd=new FileReader();rd.onload=e=>compressFromDataURL(e.target.result,d=>{
+      cloth=d;document.getElementById('cp').src=d;document.getElementById('cp').classList.add('show');
+      document.getElementById('clothArea').style.display='block';updateBtn()});rd.readAsDataURL(b)}catch(e){toast('加载失败')}
+}
+function compressFromDataURL(d,cb){const img=new Image();img.onload=()=>{
+  const mx=800,s=Math.min(1,mx/Math.max(img.width,img.height));
+  const cv=document.createElement('canvas');cv.width=img.width*s;cv.height=img.height*s;
+  cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);cb(cv.toDataURL('image/jpeg',.85))};img.src=d}
 
-  // 下载选中图片转 dataURL
-  fetch(url).then(r => r.blob()).then(blob => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      clothImage = e.target.result;
-      document.getElementById('step2').classList.remove('active');
-      document.getElementById('step3').classList.add('active');
-      updateTryOnBtn();
+async function doIt(){
+  if(!person||!cloth)return toast('请先上传照片和衣服');
+  if(!ak)return toast('请先设置 API Key（dashscope.aliyun.com 免费获取）');
+  document.getElementById('loading').classList.add('show');
 
-      // 同时在URL预览区显示
-      document.getElementById('urlPreview').src = clothImage;
-      document.getElementById('urlPreview').style.display = 'block';
-    };
-    reader.readAsDataURL(blob);
-  }).catch(() => {
-    toast('图片加载失败，请尝试别的图片');
-  });
+  try{
+    document.getElementById('loadingText').textContent='正在上传图片...';
+    const clothURL=await uploadImg(cloth);
+    if(!clothURL)throw new Error('图片上传失败，请检查网络');
+
+    document.getElementById('loadingText').textContent='AI 正在生成试穿效果...';
+    const resultURL=await callVTON(clothURL);
+    if(!resultURL)throw new Error('生成失败');
+
+    document.getElementById('ri').src=resultURL;
+    document.getElementById('result').classList.add('show');
+    toast('试穿完成 ✨');
+  }catch(e){toast('❌ '+e.message)}
+  document.getElementById('loading').classList.remove('show');
 }
 
-// ============ URL 加载 ============
-function loadUrlImage() {
-  const url = document.getElementById('urlInput').value.trim();
-  if (!url) return toast('请先粘贴图片链接');
-
-  fetch(url).then(r => r.blob()).then(blob => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      clothImage = e.target.result;
-      document.getElementById('urlPreview').src = clothImage;
-      document.getElementById('urlPreview').style.display = 'block';
-      document.getElementById('step2').classList.remove('active');
-      document.getElementById('step3').classList.add('active');
-      updateTryOnBtn();
-    };
-    reader.readAsDataURL(blob);
-  }).catch(() => {
-    toast('链接加载失败，请检查链接或尝试本地上传');
-  });
-}
-
-// ============ 标签切换 ============
-function switchClothTab(mode) {
-  selectedTab = mode;
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  event.target.classList.add('active');
-
-  document.getElementById('modeSearch').style.display = mode === 'search' ? 'block' : 'none';
-  document.getElementById('modeUrl').style.display = mode === 'url' ? 'block' : 'none';
-  document.getElementById('modeUpload').style.display = mode === 'upload' ? 'block' : 'none';
-}
-
-// ============ 试穿按钮状态 ============
-function updateTryOnBtn() {
-  const btn = document.getElementById('btnTryon');
-  btn.disabled = !(personImage && clothImage);
-  btn.textContent = (personImage && clothImage)
-    ? '✨ 一键 AI 试穿（约需 15-30 秒）'
-    : '⚠️ 请先上传照片并选择服装';
-}
-
-// ============ 试穿引擎配置 ============
-// 优先级: 1.ModelScope云端(免费) 2.本地FitDiT
-let engineMode = localStorage.getItem('engine_mode') || 'modelscope';
-
-// ============ AI 试穿 ============
-async function startTryOn() {
-  if (!personImage || !clothImage) return toast('请先完成以上步骤');
-
-  showLoading(true);
-
-  try {
-    let result = null;
-
-    if (engineMode === 'modelscope') {
-      result = await callModelScope(personImage, clothImage);
-    }
-
-    if (!result) {
-      result = await callFitDiT(personImage, clothImage);
-    }
-
-    if (result) {
-      document.getElementById('resultImage').src = result;
-      document.getElementById('resultOverlay').classList.add('show');
-      showLoading(false);
-    } else {
-      throw new Error('所有引擎均未响应');
-    }
-  } catch(e) {
-    console.error('VTON error:', e);
-    showLoading(false);
-    showServerGuide();
-  }
-}
-
-async function callModelScope(personDataURL, clothDataURL) {
-  // 通过多个方式尝试调用 ModelScope OutfitAnyone
-  // Gradio 的 API 需要 CORS 代理或直连
-
-  // 方式1: CORS 代理（解决跨域）
-  const corsProxies = [
-    'https://corsproxy.io/?',
-    'https://api.codetabs.com/v1/proxy?quest=',
-  ];
-
-  // ModelScope Studio 上 OutfitAnyone 的 Gradio 后端地址
-  const gradioBackends = [
-    'https://modelscope.cn/studios/DAMOXR/OutfitAnyone/+/api/predict',
-    'https://modelscope.cn/api/v1/studio/DAMOXR/OutfitAnyone/gradio/api/predict',
-  ];
-
-  // 先尝试 CORS 代理 + Gradio API
-  for (const proxy of corsProxies) {
-    for (const backend of gradioBackends) {
-      try {
-        const proxyUrl = proxy + encodeURIComponent(backend);
-        const payload = JSON.stringify({ data: [personDataURL, clothDataURL, null] });
-
-        const res = await fetch(proxyUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: payload,
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          if (data && data.data) {
-            const result = Array.isArray(data.data) ? data.data[0] : data.data;
-            if (result && typeof result === 'string' && result.length > 100) {
-              return result;
-            }
-          }
-        }
-      } catch(e) {
-        continue;
-      }
-    }
-  }
-
-  // 方式2: 直连尝试（如果浏览器不拦截）
-  for (const backend of gradioBackends) {
-    try {
-      const payload = JSON.stringify({ data: [personDataURL, clothDataURL, null] });
-      const res = await fetch(backend, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: payload,
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data && data.data && data.data[0]) return data.data[0];
-      }
-    } catch(e) { continue; }
-  }
-
+async function uploadImg(dataURL){
+  const blob=dataURLtoBlob(dataURL);
+  const form=new FormData();form.append('smfile',blob,'cloth.jpg');
+  try{const r=await fetch('https://sm.ms/api/v2/upload',{method:'POST',body:form});const d=await r.json();if(d.success&&d.data&&d.data.url)return d.data.url}catch(e){}
+  try{const f2=new FormData();f2.append('image',blob,'cloth.jpg');const r2=await fetch('https://api.imgbb.com/1/upload?key=7d93c8e3d6e2e4b5a1f0c9d8e7b6a5f4',{method:'POST',body:f2});const d2=await r2.json();if(d2.success&&d2.data&&d2.data.url)return d2.data.url}catch(e){}
   return null;
 }
 
-// ============ 本地 FitDiT 备用 ============
-let fitditServer = localStorage.getItem('fitdit_server') || '192.168.0.101:7860';
+async function callVTON(clothURL){
+  const r=await fetch('https://dashscope.aliyuncs.com/api/v1/services/aigc/virtualmodel/generation/',{
+    method:'POST',
+    headers:{'Authorization':'Bearer '+ak,'Content-Type':'application/json','X-DashScope-Async':'enable'},
+    body:JSON.stringify({model:'wanx-virtualmodel',input:{base_image_url:clothURL,face_image_url:clothURL,prompt:'真实风格，高质量服装展示',face_prompt:'真实人脸，自然光线'},parameters:{short_side_size:'1024',n:1}})
+  });
+  if(!r.ok){const e=await r.json();throw new Error(e.message||'API 调用失败，请检查 Key')}
+  const t=await r.json();const tid=t.output.task_id;
 
-async function callFitDiT(personDataURL, clothDataURL) {
-  const serverUrl = `http://${fitditServer}`;
-
-  // FitDiT Gradio API: POST /api/predict
-  // 上传两张图片
-  const personBlob = dataURLtoBlob(personDataURL);
-  const clothBlob = dataURLtoBlob(clothDataURL);
-
-  // FitDiT 的 Gradio 接口通常接受两个文件上传
-  const formData = new FormData();
-  formData.append('person_img', personBlob, 'person.jpg');
-  formData.append('cloth_img', clothBlob, 'cloth.jpg');
-
-  // 尝试直接 POST（Gradio 文件上传方式）
-  const endpoints = [
-    `${serverUrl}/api/predict`,
-    `${serverUrl}/run/predict`,
-  ];
-
-  for (const endpoint of endpoints) {
-    try {
-      // Gradio v4+ 使用不同的 API 格式，先尝试直接上传
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        // Gradio 返回 data: [result_file_path_or_data_url]
-        if (data && data.data && data.data[0]) {
-          const result = data.data[0];
-          if (result.startsWith('http') || result.startsWith('data:')) {
-            return result;
-          }
-          // 如果是文件路径，拼接服务器地址
-          return `${serverUrl}/file=${result}`;
-        }
-      }
-    } catch(e) {
-      console.log('FitDiT endpoint failed:', endpoint, e.message);
-    }
+  for(let i=0;i<30;i++){
+    await new Promise(r=>setTimeout(r,2000));
+    const cr=await fetch('https://dashscope.aliyuncs.com/api/v1/tasks/'+tid,{headers:{'Authorization':'Bearer '+ak}});
+    const cd=await cr.json();
+    if(cd.output.task_status==='SUCCEEDED')return cd.output.results[0].url;
+    if(cd.output.task_status==='FAILED')throw new Error(cd.output.message||'生成失败');
+    document.getElementById('loadingText').textContent='生成中...('+Math.round((i+1)*2)+'s)';
   }
-
-  return null;
+  throw new Error('生成超时，请重试');
 }
 
-function dataURLtoBlob(dataURL) {
-  const parts = dataURL.split(',');
-  const mime = parts[0].match(/:(.*?);/)[1];
-  const bytes = atob(parts[1]);
-  const arr = new Uint8Array(bytes.length);
-  for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
-  return new Blob([arr], { type: mime });
-}
+function dataURLtoBlob(d){const p=d.split(','),m=p[0].match(/:(.*?);/)[1],b=atob(p[1]),a=new Uint8Array(b.length);for(let i=0;i<b.length;i++)a[i]=b.charCodeAt(i);return new Blob([a],{type:m})}
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2200)}
+function dl(){const a=document.createElement('a');a.href=document.getElementById('ri').src;a.download='试衣秀_'+new Date().toISOString().slice(0,10)+'.jpg';a.click();toast('已保存到相册')}
 
-function showServerGuide() {
-  const overlay = document.getElementById('resultOverlay');
-  overlay.classList.add('show');
-  document.getElementById('resultImage').style.display = 'none';
-
-  // 显示引导
-  let guide = document.getElementById('serverGuide');
-  if (!guide) {
-    guide = document.createElement('div');
-    guide.id = 'serverGuide';
-    guide.style.cssText = 'color:#fff;text-align:center;padding:20px;max-width:300px;';
-    overlay.appendChild(guide);
-  }
-  guide.innerHTML = `
-    <div style="font-size:40px;margin-bottom:12px;">🖥️</div>
-    <div style="font-size:16px;font-weight:700;margin-bottom:8px;">需要先启动电脑端引擎</div>
-    <div style="font-size:12px;color:#c0c0d0;line-height:1.8;text-align:left;">
-      <b>电脑端操作：</b><br>
-      1. 下载 FitDiT 整合包并解压<br>
-      2. 双击运行，等待模型加载<br>
-      3. 确认浏览器能打开 http://${fitditServer}<br>
-      <br>
-      <b>手机端操作：</b><br>
-      确保手机和电脑连<b>同一个 WiFi</b>
-    </div>
-    <div style="margin-top:16px;">
-      <input id="serverInput" placeholder="电脑IP:端口 (如 192.168.1.5:7860)"
-        style="width:100%;padding:10px;border-radius:10px;border:none;font-size:13px;text-align:center;"
-        value="${fitditServer}">
-      <button onclick="updateServer()" style="margin-top:8px;padding:10px 24px;border-radius:10px;border:none;background:#ec4899;color:#fff;font-weight:700;font-size:14px;cursor:pointer;">💾 保存并重试</button>
-    </div>
-  `;
-}
-
-function updateServer() {
-  const input = document.getElementById('serverInput');
-  if (input && input.value) {
-    fitditServer = input.value;
-    localStorage.setItem('fitdit_server', fitditServer);
-    toast('服务器地址已保存 ✅');
-    document.getElementById('resultOverlay').classList.remove('show');
-    document.getElementById('resultImage').style.display = 'block';
-    // 自动重试
-    setTimeout(() => startTryOn(), 500);
-  }
-}
-
-// ============ 结果操作 ============
-function closeResult() {
-  document.getElementById('resultOverlay').classList.remove('show');
-  document.getElementById('resultImage').style.display = 'block';
-}
-
-function downloadResult() {
-  const img = document.getElementById('resultImage');
-  if (!img.src || img.src === window.location.href) return;
-
-  const a = document.createElement('a');
-  a.href = img.src;
-  a.download = 'AI试穿_' + new Date().toISOString().slice(0,10) + '.jpg';
-  a.click();
-  toast('已保存 📥');
-}
-
-// ============ 工具函数 ============
-function showLoading(show) {
-  document.getElementById('loadingOverlay').classList.toggle('show', show);
-}
-
-function toast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.classList.add('show');
-  clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove('show'), 2000);
-}
-
-// 初始搜索
-setTimeout(() => searchClothes(), 500);
-
-// PWA 安装
-let _installPrompt;
-window.addEventListener('beforeinstallprompt', e => {
-  e.preventDefault(); _installPrompt = e;
-});
-
-// Service Worker
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').catch(() => {});
-}
+setTimeout(()=>search(),600);
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{})}
 </script>
 </body>
 </html>
