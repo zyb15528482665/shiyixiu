@@ -436,6 +436,9 @@ function updateTryOnBtn() {
     : '⚠️ 请先上传照片并选择服装';
 }
 
+// ============ FitDiT 服务器配置 ============
+let fitditServer = localStorage.getItem('fitdit_server') || '192.168.0.101:7860';
+
 // ============ AI 试穿 ============
 async function startTryOn() {
   if (!personImage || !clothImage) return toast('请先完成以上步骤');
@@ -443,68 +446,66 @@ async function startTryOn() {
   showLoading(true);
 
   try {
-    // 方案1: 尝试 Hugging Face IDM-VTON API
-    const result = await callIDMVTON(personImage, clothImage);
+    // 尝试本地 FitDiT
+    const result = await callFitDiT(personImage, clothImage);
 
     if (result) {
       document.getElementById('resultImage').src = result;
       document.getElementById('resultOverlay').classList.add('show');
     } else {
-      throw new Error('API unavailable');
+      throw new Error('本地 FitDiT 未响应');
     }
   } catch(e) {
-    console.error('VTON API error:', e);
-    // 降级: 显示提示
-    toast('云端 API 暂不可用，请确认已下载 FitDiT 并运行在电脑上');
-    showFallbackGuide();
-  } finally {
+    console.error('VTON error:', e);
     showLoading(false);
+    showServerGuide();
   }
 }
 
-async function callIDMVTON(personDataURL, clothDataURL) {
-  // IDM-VTON Gradio API endpoint
-  // 尝试多个可能的端点
-  const endpoints = [
-    'https://yisol-idm-vton.hf.space/api/predict',
-    'https://huggingface.co/spaces/yisol/IDM-VTON',
-  ];
+async function callFitDiT(personDataURL, clothDataURL) {
+  const serverUrl = `http://${fitditServer}`;
 
-  // 准备图片数据（Gradio API接受的格式）
-  // 将 dataURL 转为 blob
+  // FitDiT Gradio API: POST /api/predict
+  // 上传两张图片
   const personBlob = dataURLtoBlob(personDataURL);
   const clothBlob = dataURLtoBlob(clothDataURL);
 
-  // 尝试 Gradio API
+  // FitDiT 的 Gradio 接口通常接受两个文件上传
+  const formData = new FormData();
+  formData.append('person_img', personBlob, 'person.jpg');
+  formData.append('cloth_img', clothBlob, 'cloth.jpg');
+
+  // 尝试直接 POST（Gradio 文件上传方式）
+  const endpoints = [
+    `${serverUrl}/api/predict`,
+    `${serverUrl}/run/predict`,
+  ];
+
   for (const endpoint of endpoints) {
     try {
-      const formData = new FormData();
-      formData.append('data', JSON.stringify([
-        personBlob,  // person image
-        clothBlob,   // cloth image
-        true,        // auto-resize
-        true         // adjust color
-      ]));
-
+      // Gradio v4+ 使用不同的 API 格式，先尝试直接上传
       const res = await fetch(endpoint, {
         method: 'POST',
         body: formData,
-        // Gradio API有时需要这些headers
-        headers: { 'Accept': 'application/json' }
       });
 
       if (res.ok) {
         const data = await res.json();
+        // Gradio 返回 data: [result_file_path_or_data_url]
         if (data && data.data && data.data[0]) {
-          // Gradio返回的可能是一个文件路径或data URL
-          return data.data[0];
+          const result = data.data[0];
+          if (result.startsWith('http') || result.startsWith('data:')) {
+            return result;
+          }
+          // 如果是文件路径，拼接服务器地址
+          return `${serverUrl}/file=${result}`;
         }
       }
     } catch(e) {
-      console.log('Endpoint failed:', endpoint, e.message);
-      continue;
+      console.log('FitDiT endpoint failed:', endpoint, e.message);
     }
   }
+
   return null;
 }
 
@@ -517,9 +518,51 @@ function dataURLtoBlob(dataURL) {
   return new Blob([arr], { type: mime });
 }
 
-function showFallbackGuide() {
-  document.getElementById('resultOverlay').classList.add('show');
+function showServerGuide() {
+  const overlay = document.getElementById('resultOverlay');
+  overlay.classList.add('show');
   document.getElementById('resultImage').style.display = 'none';
+
+  // 显示引导
+  let guide = document.getElementById('serverGuide');
+  if (!guide) {
+    guide = document.createElement('div');
+    guide.id = 'serverGuide';
+    guide.style.cssText = 'color:#fff;text-align:center;padding:20px;max-width:300px;';
+    overlay.appendChild(guide);
+  }
+  guide.innerHTML = `
+    <div style="font-size:40px;margin-bottom:12px;">🖥️</div>
+    <div style="font-size:16px;font-weight:700;margin-bottom:8px;">需要先启动电脑端引擎</div>
+    <div style="font-size:12px;color:#c0c0d0;line-height:1.8;text-align:left;">
+      <b>电脑端操作：</b><br>
+      1. 下载 FitDiT 整合包并解压<br>
+      2. 双击运行，等待模型加载<br>
+      3. 确认浏览器能打开 http://${fitditServer}<br>
+      <br>
+      <b>手机端操作：</b><br>
+      确保手机和电脑连<b>同一个 WiFi</b>
+    </div>
+    <div style="margin-top:16px;">
+      <input id="serverInput" placeholder="电脑IP:端口 (如 192.168.1.5:7860)"
+        style="width:100%;padding:10px;border-radius:10px;border:none;font-size:13px;text-align:center;"
+        value="${fitditServer}">
+      <button onclick="updateServer()" style="margin-top:8px;padding:10px 24px;border-radius:10px;border:none;background:#ec4899;color:#fff;font-weight:700;font-size:14px;cursor:pointer;">💾 保存并重试</button>
+    </div>
+  `;
+}
+
+function updateServer() {
+  const input = document.getElementById('serverInput');
+  if (input && input.value) {
+    fitditServer = input.value;
+    localStorage.setItem('fitdit_server', fitditServer);
+    toast('服务器地址已保存 ✅');
+    document.getElementById('resultOverlay').classList.remove('show');
+    document.getElementById('resultImage').style.display = 'block';
+    // 自动重试
+    setTimeout(() => startTryOn(), 500);
+  }
 }
 
 // ============ 结果操作 ============
