@@ -71,8 +71,14 @@ canvas{display:none}
 
 <canvas id="workCanvas"></canvas>
 
+<!-- 必须在TF.js加载前限制WebGL纹理(手机GPU仅1024×1024) -->
+<script>
+window.TF_ENV = {
+  WEBGL_MAX_TEXTURE_SIZE: 256,
+  WEBGL_CPU_FORWARD: true
+};
+</script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0/dist/tf.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-wasm@4.17.0/dist/tf-backend-wasm.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@2.1.3/dist/pose-detection.min.js"></script>
 
 <script>
@@ -129,28 +135,24 @@ function updateBtn() {
 // ============ 姿态检测初始化 ============
 async function initDetector() {
   if (detector) return detector;
-  document.getElementById('status').textContent = '正在加载AI引擎（首次约20秒）...';
+  document.getElementById('status').textContent = '正在加载AI引擎...';
 
-  // 华为Mali GPU不兼容WebGL，改用WASM后端（CPU运算，无纹理限制）
+  // 强制CPU后端（GPU仅1024px，无论如何都会崩）
   try {
-    const wasm = tf.backend('wasm');
-    if (!wasm) {
-      await tf.setBackend('wasm');
-      await tf.ready();
-    }
-  } catch(e) {
-    // WASM不可用时降级到CPU
-    document.getElementById('status').textContent = 'WASM不可用，降级CPU模式...';
     await tf.setBackend('cpu');
+    await tf.ready();
+  } catch(e) {
+    tf.env().set('WEBGL_MAX_TEXTURE_SIZE', 256);
     await tf.ready();
   }
 
+  document.getElementById('status').textContent = '正在加载姿态模型...';
   const model = poseDetection.SupportedModels.BlazePose;
   detector = await poseDetection.createDetector(model, {
     runtime: 'tfjs',
     modelType: 'lite'
   });
-  document.getElementById('status').textContent = '✅ 引擎就绪（WASM模式）';
+  document.getElementById('status').textContent = '✅ 引擎就绪（CPU模式）';
   return detector;
 }
 
