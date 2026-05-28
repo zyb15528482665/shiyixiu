@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="AI试穿">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='40' fill='%234f46e5'/><text x='96' y='130' font-size='110' text-anchor='middle'>👗</text></svg>">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#4f46e5">
+<title>AI 智能试穿</title>
+<style>
+:root {
+  --primary: #4f46e5; --primary-light: #818cf8; --bg: #f5f3ff;
+  --card: #fff; --text: #1e1b4b; --sub: #6b7280; --radius: 16px;
+  --shadow: 0 2px 16px rgba(79,70,229,0.08);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: "PingFang SC","Microsoft YaHei",-apple-system,sans-serif;
+  background: var(--bg); color: var(--text);
+  min-height: 100dvh; padding-bottom: 30px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Header */
+header {
+  padding: 16px 20px 12px; text-align: center;
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  color: #fff; border-radius: 0 0 24px 24px;
+}
+header h1 { font-size: 22px; font-weight: 800; }
+header p  { font-size: 12px; opacity: 0.8; margin-top: 2px; }
+
+/* Step indicator */
+.steps {
+  display: flex; justify-content: center; gap: 8px;
+  margin: 16px 16px 0; font-size: 12px; color: var(--sub);
+}
+.step {
+  display: flex; align-items: center; gap: 4px;
+  padding: 6px 12px; border-radius: 20px; background: #e8e5ff;
+}
+.step.active { background: var(--primary); color: #fff; font-weight: 700; }
+
+/* Cards */
+.card {
+  margin: 14px 16px; padding: 18px;
+  background: var(--card); border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.card h3 { font-size: 15px; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+
+/* Upload area */
+.upload-area {
+  border: 2px dashed #d4d0f0; border-radius: 14px;
+  padding: 24px; text-align: center; cursor: pointer;
+  transition: all 0.2s; background: #faf9ff;
+  position: relative;
+}
+.upload-area:active { transform: scale(0.98); background: #f0edff; }
+.upload-area.has-image { border-color: var(--primary); background: #eef2ff; }
+.upload-area .icon { font-size: 40px; margin-bottom: 8px; }
+.upload-area .hint { font-size: 13px; color: var(--sub); }
+.upload-area img {
+  max-width: 100%; max-height: 200px; border-radius: 10px;
+  margin-top: 8px; display: none;
+}
+.upload-area.has-image img { display: inline; }
+.upload-area.has-image .placeholder { display: none; }
+
+/* Image preview row */
+.preview-row {
+  display: flex; gap: 12px; margin: 0 16px;
+}
+.preview-row .card { flex: 1; margin: 0; text-align: center; }
+.preview-row img {
+  width: 100%; max-height: 180px; object-fit: cover;
+  border-radius: 10px; margin-top: 8px;
+}
+
+/* Search */
+.search-row {
+  display: flex; gap: 8px; margin: 0 16px 12px;
+}
+.search-input {
+  flex: 1; padding: 12px 16px; border-radius: 14px;
+  border: 1.5px solid #e0dce8; font-size: 14px;
+  font-family: inherit; background: #fff; color: var(--text);
+}
+.search-input:focus { outline: none; border-color: var(--primary); }
+.search-btn {
+  padding: 12px 18px; border-radius: 14px; border: none;
+  background: var(--primary); color: #fff; font-weight: 700;
+  font-size: 14px; cursor: pointer; font-family: inherit;
+}
+.search-btn:active { transform: scale(0.95); }
+
+/* Clothing grid */
+.clothes-grid {
+  display: grid; grid-template-columns: repeat(3,1fr);
+  gap: 8px; margin: 0 16px;
+}
+.clothes-item {
+  aspect-ratio: 0.75; border-radius: 12px; overflow: hidden;
+  cursor: pointer; position: relative; background: #e8e5ff;
+}
+.clothes-item img {
+  width: 100%; height: 100%; object-fit: cover;
+}
+.clothes-item.selected {
+  outline: 3px solid var(--primary); outline-offset: -3px;
+}
+.clothes-item.selected::after {
+  content: '✓'; position: absolute; top: 6px; right: 6px;
+  background: var(--primary); color: #fff; width: 24px; height: 24px;
+  border-radius: 50%; display: flex; align-items: center;
+  justify-content: center; font-size: 14px; font-weight: 700;
+}
+
+/* URL input */
+.url-row {
+  display: flex; gap: 8px; margin: 0 16px 12px;
+}
+
+/* Try-on button */
+.btn-tryon {
+  display: block; width: calc(100% - 32px); margin: 20px 16px;
+  padding: 16px; border-radius: 16px; border: none;
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  color: #fff; font-size: 18px; font-weight: 800;
+  cursor: pointer; font-family: inherit;
+  box-shadow: 0 4px 20px rgba(79,70,229,0.3);
+  transition: all 0.2s;
+}
+.btn-tryon:active { transform: scale(0.96); }
+.btn-tryon:disabled { opacity: 0.5; pointer-events: none; }
+
+/* Loading */
+.loading-overlay {
+  position: fixed; top:0;left:0;right:0;bottom:0;
+  background: rgba(0,0,0,0.6); z-index: 200;
+  display: none; align-items: center; justify-content: center;
+  flex-direction: column;
+}
+.loading-overlay.show { display: flex; }
+.spinner {
+  width: 50px; height: 50px; border: 4px solid rgba(255,255,255,0.2);
+  border-top-color: #fff; border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { color: #fff; margin-top: 16px; font-size: 14px; }
+
+/* Result */
+.result-overlay {
+  position: fixed; top:0;left:0;right:0;bottom:0;
+  background: rgba(0,0,0,0.8); z-index: 250;
+  display: none; align-items: center; justify-content: center;
+  flex-direction: column; padding: 20px;
+}
+.result-overlay.show { display: flex; }
+.result-overlay img {
+  max-width: 90%; max-height: 70vh; border-radius: 16px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+}
+.result-actions { display: flex; gap: 12px; margin-top: 20px; }
+.result-btn {
+  padding: 12px 24px; border-radius: 14px; border: none;
+  font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit;
+}
+.result-btn.save { background: #fff; color: var(--primary); }
+.result-btn.close { background: rgba(255,255,255,0.2); color: #fff; }
+.result-btn:active { transform: scale(0.95); }
+
+/* Tabs */
+.tabs {
+  display: flex; gap: 4px; margin: 12px 16px;
+  background: #e8e5ff; border-radius: 14px; padding: 4px;
+}
+.tab {
+  flex: 1; padding: 10px; border-radius: 12px; border: none;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  background: transparent; color: var(--sub); font-family: inherit;
+  transition: all 0.2s;
+}
+.tab.active { background: #fff; color: var(--primary); box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+
+/* Toast */
+.toast {
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%) scale(0.8);
+  background: rgba(30,27,75,0.9); color: #fff; padding: 12px 24px;
+  border-radius: 12px; font-size: 14px; font-weight: 600;
+  z-index: 300; pointer-events: none; opacity: 0;
+  transition: all 0.2s;
+}
+.toast.show { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>👗 AI 智能试穿</h1>
+  <p>上传照片 + 选衣服 = 一键试穿</p>
+</header>
+
+<div class="steps">
+  <span class="step active" id="step1">① 上传我的照片</span>
+  <span class="step" id="step2">② 选衣服</span>
+  <span class="step" id="step3">③ 试穿</span>
+</div>
+
+<!-- 人物照片 -->
+<div class="card" id="personCard">
+  <h3>📷 我的照片</h3>
+  <div class="upload-area" id="personUpload" onclick="document.getElementById('personInput').click()">
+    <div class="placeholder">
+      <div class="icon">🧍</div>
+      <div class="hint">点击上传全身照或半身照<br>正面站立效果最佳</div>
+    </div>
+    <img id="personPreview" alt="">
+  </div>
+  <input type="file" id="personInput" accept="image/*" style="display:none" onchange="handlePerson(this)">
+</div>
+
+<!-- 服装选择 -->
+<div class="card">
+  <h3>👔 选择服装</h3>
+  <div class="tabs">
+    <button class="tab active" onclick="switchClothTab('search')">🔍 搜索</button>
+    <button class="tab" onclick="switchClothTab('url')">🔗 粘贴链接</button>
+    <button class="tab" onclick="switchClothTab('upload')">📁 本地上传</button>
+  </div>
+
+  <!-- 搜索模式 -->
+  <div id="modeSearch">
+    <div class="search-row">
+      <input class="search-input" id="searchInput" placeholder="连衣裙 / 西装 / 衬衫..." onkeydown="if(event.key==='Enter')searchClothes()">
+      <button class="search-btn" onclick="searchClothes()">搜索</button>
+    </div>
+    <div style="display:flex;gap:6px;margin:0 16px 12px;flex-wrap:wrap;">
+      <span style="font-size:11px;color:var(--sub);cursor:pointer;padding:4px 10px;background:#f0edff;border-radius:12px;" onclick="quickSearch('碎花连衣裙')">碎花连衣裙</span>
+      <span style="font-size:11px;color:var(--sub);cursor:pointer;padding:4px 10px;background:#f0edff;border-radius:12px;" onclick="quickSearch('西装外套')">西装外套</span>
+      <span style="font-size:11px;color:var(--sub);cursor:pointer;padding:4px 10px;background:#f0edff;border-radius:12px;" onclick="quickSearch('卫衣')">卫衣</span>
+      <span style="font-size:11px;color:var(--sub);cursor:pointer;padding:4px 10px;background:#f0edff;border-radius:12px;" onclick="quickSearch('牛仔裤')">牛仔裤</span>
+      <span style="font-size:11px;color:var(--sub);cursor:pointer;padding:4px 10px;background:#f0edff;border-radius:12px;" onclick="quickSearch('针织衫')">针织衫</span>
+      <span style="font-size:11px;color:var(--sub);cursor:pointer;padding:4px 10px;background:#f0edff;border-radius:12px;" onclick="quickSearch('T恤')">T恤</span>
+    </div>
+    <div class="clothes-grid" id="clothesGrid">
+      <div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--sub);font-size:13px;">
+        输入关键词搜索服装 👆
+      </div>
+    </div>
+  </div>
+
+  <!-- URL模式 -->
+  <div id="modeUrl" style="display:none;">
+    <div class="url-row">
+      <input class="search-input" id="urlInput" placeholder="粘贴衣服图片链接（淘宝/小红书/任意网址的图）">
+      <button class="search-btn" onclick="loadUrlImage()">加载</button>
+    </div>
+    <div style="text-align:center;">
+      <img id="urlPreview" style="max-width:80%;max-height:200px;border-radius:12px;display:none;" alt="">
+    </div>
+  </div>
+
+  <!-- 上传模式 -->
+  <div id="modeUpload" style="display:none;">
+    <div class="upload-area" id="clothUpload" onclick="document.getElementById('clothInput').click()">
+      <div class="placeholder">
+        <div class="icon">👕</div>
+        <div class="hint">点击上传衣服图片<br>最好是白底或平铺图</div>
+      </div>
+      <img id="clothPreview" alt="">
+    </div>
+    <input type="file" id="clothInput" accept="image/*" style="display:none" onchange="handleCloth(this)">
+  </div>
+</div>
+
+<!-- 试穿按钮 -->
+<button class="btn-tryon" id="btnTryon" onclick="startTryOn()">
+  ✨ 一键 AI 试穿
+</button>
+
+<!-- 结果弹窗 -->
+<div class="result-overlay" id="resultOverlay">
+  <img id="resultImage" alt="试穿结果">
+  <div class="result-actions">
+    <button class="result-btn close" onclick="closeResult()">✕ 关闭</button>
+    <button class="result-btn save" onclick="downloadResult()">💾 保存到相册</button>
+  </div>
+</div>
+
+<!-- 加载遮罩 -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text">AI 正在为你试穿...</div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ============ 状态 ============
+let personImage = null;       // dataURL
+let clothImage = null;       // dataURL
+let selectedTab = 'search';
+
+// Unsplash API (免费, 50次/小时)
+const UNSPLASH_KEY = 'demo'; // demo key, 限速但不需注册
+
+// ============ 人物照片 ============
+function handlePerson(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    personImage = e.target.result;
+    document.getElementById('personPreview').src = personImage;
+    document.getElementById('personUpload').classList.add('has-image');
+    document.getElementById('step1').classList.remove('active');
+    document.getElementById('step2').classList.add('active');
+    updateTryOnBtn();
+  };
+  reader.readAsDataURL(file);
+}
+
+// ============ 服装上传 ============
+function handleCloth(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    clothImage = e.target.result;
+    document.getElementById('clothPreview').src = clothImage;
+    document.getElementById('clothUpload').classList.add('has-image');
+    document.getElementById('step2').classList.remove('active');
+    document.getElementById('step3').classList.add('active');
+    updateTryOnBtn();
+  };
+  reader.readAsDataURL(file);
+}
+
+// ============ 服装搜索 ============
+async function searchClothes() {
+  const query = document.getElementById('searchInput').value || '连衣裙';
+  const grid = document.getElementById('clothesGrid');
+  grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--sub);">搜索中...</div>';
+
+  try {
+    const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query + ' fashion clothing')}&per_page=30&client_id=${UNSPLASH_KEY}`;
+    const res = await fetch(url);
+    const data = await res.json();
+
+    if (data.results && data.results.length > 0) {
+      grid.innerHTML = data.results.map((r, i) => `
+        <div class="clothes-item" onclick="selectCloth(this, '${r.urls.regular.replace(/'/g,"\\'")}')">
+          <img src="${r.urls.small}" alt="" loading="lazy">
+        </div>
+      `).join('');
+    } else {
+      grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--sub);">未找到结果，换个关键词试试</div>';
+    }
+  } catch(e) {
+    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--sub);">网络不可用（可能需要翻墙访问 Unsplash）<br>请切换到「本地上传」模式</div>';
+  }
+}
+
+function quickSearch(q) {
+  document.getElementById('searchInput').value = q;
+  searchClothes();
+}
+
+function selectCloth(el, url) {
+  document.querySelectorAll('.clothes-item').forEach(i => i.classList.remove('selected'));
+  el.classList.add('selected');
+
+  // 下载选中图片转 dataURL
+  fetch(url).then(r => r.blob()).then(blob => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      clothImage = e.target.result;
+      document.getElementById('step2').classList.remove('active');
+      document.getElementById('step3').classList.add('active');
+      updateTryOnBtn();
+
+      // 同时在URL预览区显示
+      document.getElementById('urlPreview').src = clothImage;
+      document.getElementById('urlPreview').style.display = 'block';
+    };
+    reader.readAsDataURL(blob);
+  }).catch(() => {
+    toast('图片加载失败，请尝试别的图片');
+  });
+}
+
+// ============ URL 加载 ============
+function loadUrlImage() {
+  const url = document.getElementById('urlInput').value.trim();
+  if (!url) return toast('请先粘贴图片链接');
+
+  fetch(url).then(r => r.blob()).then(blob => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      clothImage = e.target.result;
+      document.getElementById('urlPreview').src = clothImage;
+      document.getElementById('urlPreview').style.display = 'block';
+      document.getElementById('step2').classList.remove('active');
+      document.getElementById('step3').classList.add('active');
+      updateTryOnBtn();
+    };
+    reader.readAsDataURL(blob);
+  }).catch(() => {
+    toast('链接加载失败，请检查链接或尝试本地上传');
+  });
+}
+
+// ============ 标签切换 ============
+function switchClothTab(mode) {
+  selectedTab = mode;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+
+  document.getElementById('modeSearch').style.display = mode === 'search' ? 'block' : 'none';
+  document.getElementById('modeUrl').style.display = mode === 'url' ? 'block' : 'none';
+  document.getElementById('modeUpload').style.display = mode === 'upload' ? 'block' : 'none';
+}
+
+// ============ 试穿按钮状态 ============
+function updateTryOnBtn() {
+  const btn = document.getElementById('btnTryon');
+  btn.disabled = !(personImage && clothImage);
+  btn.textContent = (personImage && clothImage)
+    ? '✨ 一键 AI 试穿（约需 15-30 秒）'
+    : '⚠️ 请先上传照片并选择服装';
+}
+
+// ============ AI 试穿 ============
+async function startTryOn() {
+  if (!personImage || !clothImage) return toast('请先完成以上步骤');
+
+  showLoading(true);
+
+  try {
+    // 方案1: 尝试 Hugging Face IDM-VTON API
+    const result = await callIDMVTON(personImage, clothImage);
+
+    if (result) {
+      document.getElementById('resultImage').src = result;
+      document.getElementById('resultOverlay').classList.add('show');
+    } else {
+      throw new Error('API unavailable');
+    }
+  } catch(e) {
+    console.error('VTON API error:', e);
+    // 降级: 显示提示
+    toast('云端 API 暂不可用，请确认已下载 FitDiT 并运行在电脑上');
+    showFallbackGuide();
+  } finally {
+    showLoading(false);
+  }
+}
+
+async function callIDMVTON(personDataURL, clothDataURL) {
+  // IDM-VTON Gradio API endpoint
+  // 尝试多个可能的端点
+  const endpoints = [
+    'https://yisol-idm-vton.hf.space/api/predict',
+    'https://huggingface.co/spaces/yisol/IDM-VTON',
+  ];
+
+  // 准备图片数据（Gradio API接受的格式）
+  // 将 dataURL 转为 blob
+  const personBlob = dataURLtoBlob(personDataURL);
+  const clothBlob = dataURLtoBlob(clothDataURL);
+
+  // 尝试 Gradio API
+  for (const endpoint of endpoints) {
+    try {
+      const formData = new FormData();
+      formData.append('data', JSON.stringify([
+        personBlob,  // person image
+        clothBlob,   // cloth image
+        true,        // auto-resize
+        true         // adjust color
+      ]));
+
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        body: formData,
+        // Gradio API有时需要这些headers
+        headers: { 'Accept': 'application/json' }
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.data && data.data[0]) {
+          // Gradio返回的可能是一个文件路径或data URL
+          return data.data[0];
+        }
+      }
+    } catch(e) {
+      console.log('Endpoint failed:', endpoint, e.message);
+      continue;
+    }
+  }
+  return null;
+}
+
+function dataURLtoBlob(dataURL) {
+  const parts = dataURL.split(',');
+  const mime = parts[0].match(/:(.*?);/)[1];
+  const bytes = atob(parts[1]);
+  const arr = new Uint8Array(bytes.length);
+  for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+  return new Blob([arr], { type: mime });
+}
+
+function showFallbackGuide() {
+  document.getElementById('resultOverlay').classList.add('show');
+  document.getElementById('resultImage').style.display = 'none';
+}
+
+// ============ 结果操作 ============
+function closeResult() {
+  document.getElementById('resultOverlay').classList.remove('show');
+  document.getElementById('resultImage').style.display = 'block';
+}
+
+function downloadResult() {
+  const img = document.getElementById('resultImage');
+  if (!img.src || img.src === window.location.href) return;
+
+  const a = document.createElement('a');
+  a.href = img.src;
+  a.download = 'AI试穿_' + new Date().toISOString().slice(0,10) + '.jpg';
+  a.click();
+  toast('已保存 📥');
+}
+
+// ============ 工具函数 ============
+function showLoading(show) {
+  document.getElementById('loadingOverlay').classList.toggle('show', show);
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// 初始搜索
+setTimeout(() => searchClothes(), 500);
+
+// PWA 安装
+let _installPrompt;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault(); _installPrompt = e;
+});
+
+// Service Worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
